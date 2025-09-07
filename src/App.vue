@@ -1,6 +1,5 @@
 <script setup>
-import HelloWorld from './components/HelloWorld.vue'
-import TheWelcome from './components/TheWelcome.vue'
+import ToDo from "@/components/to-do-list/to-do.vue";
 import ToDoList from "@/pages/to-do-list.vue";
 </script>
 

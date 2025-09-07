@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import {ref} from 'vue'
+import ToDo from "@/components/to-do-list/to-do.vue";
+
 
 const toDo = ref({
   title: '',
@@ -42,10 +44,8 @@ const taskHider = ref(false)
     <ul>
       <li v-for="task in sortedList()" :key="task.id">
 
-        <span>
-          <input type="checkbox" v-model="task.status" />
-          {{task.title}}
-        </span>
+        <to-do :task="task" @update:status="task.status = $event" /> <!-- $event est une variable spéciale de Vue qui
+        contient ce que l'enfant a envoyé avec `emit()` -->
 
       </li>
       <li>

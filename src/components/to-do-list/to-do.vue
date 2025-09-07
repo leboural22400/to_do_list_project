@@ -1,31 +1,27 @@
 <script setup lang="ts">
 import {ref} from "vue";
 
-const defineProps = ({
-  title: {
-    type: String,
-    required: true
-  },
-  status: {
-    type: Boolean,
-    required: true
-  },
-  date: {
-    type: Date,
+const props = defineProps({
+  task: {
+    type: Object,
+    required: true,
   }
-});
 
-const toDo = ref({
-  title: '',
-  status: false,
-  date: Date.now()
-})
+});
+const emit = defineEmits(['update:status']) // on definit un emit pour le status
+const updateStatus = (newStatus) => {
+  emit('update:status', newStatus)
+}
 </script>
 
 <template>
 <span>
-  <input type="checkbox" v-model="toDo.status" />
-          {{toDo.title}}
+  <input
+      type="checkbox"
+      :checked="task.status"
+      @change="updateStatus($event.target.checked)"
+  />
+  {{task.title}}
 </span>
 </template>
 
