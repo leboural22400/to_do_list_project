@@ -8,8 +8,14 @@ const toDo = ref({
   status: false,
   date: Date.now() // pour le moment inutile à voir si on garde
 })
+
 const toDoList = ref([])
 const taskHider = ref(false)
+
+/**
+ * Ajoute une nouvelle tâche à la liste si le titre n'est pas vide
+ * Réinitialise le champ de saisie après l'ajout
+ */
 
  const addTask=()=>{
    if (toDo.value.title.trim() === '') return;
@@ -23,7 +29,14 @@ const taskHider = ref(false)
    toDo.value.title = ''
  }
 
- const sortedList = () => {
+/**
+ * Retourne la liste des tâches triées et filtrées en fonction du statut
+ * Les tâches non accomplies apparaissent en premier
+ * Si `taskHider` est activé, les tâches accomplies sont filtrées
+ * @returns {Array} Liste des tâches triées et filtrées
+ */
+
+const sortedList = () => {
 
   const sortedList = toDoList.value.toSorted((a, b) =>
       a.status > b.status ? 1 : -1)
@@ -44,7 +57,7 @@ const taskHider = ref(false)
     <ul>
       <li v-for="task in sortedList()" :key="task.id">
 
-        <to-do :task="task" @update:status="task.status = $event" /> <!-- $event est une variable spéciale de Vue qui
+        <to-do :taskProps="task" @update:status="task.status = $event" /> <!-- $event est une variable spéciale de Vue qui
         contient ce que l'enfant a envoyé avec `emit()` -->
 
       </li>
