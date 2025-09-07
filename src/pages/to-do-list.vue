@@ -1,17 +1,24 @@
 <script setup lang="ts">
 import {ref} from 'vue'
 
-const toDo = ref('')
+const toDo = ref({
+  title: '',
+  status: false,
+  date: Date.now() // pour le moment inutile à voir si on garde
+})
 const toDoList = ref([])
 const taskHider = ref(false)
 
  const addTask=()=>{
-    toDoList.value.push({
-      title: toDo.value,
-      status: false,
-      date: Date.now()
+   if (toDo.value.title.trim() === '') return;
+
+   toDoList.value.push({
+     id: crypto.randomUUID(), // créer un id unique
+     title: toDo.value.title,
+     status: toDo.value.status,
+     date: toDo.value.date, // pour le moment inutile à voir si on garde
     })
-   toDo.value = ''
+   toDo.value.title = ''
  }
 
  const sortedList = () => {
@@ -33,17 +40,17 @@ const taskHider = ref(false)
 
   <div class="to-do-list">
     <ul>
-      <li v-for="toDo in sortedList()" :key="toDo.date">
+      <li v-for="task in sortedList()" :key="task.id">
 
         <span>
-          <input type="checkbox" v-model="toDo.status" />
-          {{toDo.title}}
+          <input type="checkbox" v-model="task.status" />
+          {{task.title}}
         </span>
 
       </li>
       <li>
-        <form class="add-task"  @submit.prevent="addTask"> <!-- .prevent empêche de recharger la page sinn tout s'efface -->
-        <input v-model="toDo" type="text" placeholder="Nouvelle tâche" class="task-input"/>
+        <form class="add-task"  @submit.prevent="addTask()"> <!-- .prevent empêche de recharger la page sinn tout s'efface -->
+        <input v-model="toDo.title" type="text" placeholder="Nouvelle tâche" class="task-input"/>
         <button type="submit" class="add-button">Ajouter</button>
       </form>
       </li>
