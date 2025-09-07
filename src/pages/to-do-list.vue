@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import {ref} from 'vue'
+import {ref, computed} from 'vue'
 import ToDo from "@/components/to-do-list/to-do.vue";
 
 
 const toDo = ref({
   title: '',
-  status: false,
+  status: 'todo',
   date: Date.now() // pour le moment inutile à voir si on garde
 })
 
@@ -36,15 +36,15 @@ const taskHider = ref(false)
  * @returns {Array} Liste des tâches triées et filtrées
  */
 
-const sortedList = () => {
+const sortedList = computed(() => {
 
   const sortedList = toDoList.value.toSorted((a, b) =>
       a.status > b.status ? 1 : -1)
    if (taskHider.value) {
-    return sortedList.filter(c => c.status === false)
+    return sortedList.filter(c => c.status === "done")
    }
    return sortedList
- }
+ })
 </script>
 
 <template>
@@ -55,7 +55,7 @@ const sortedList = () => {
 
   <div class="to-do-list">
     <ul>
-      <li v-for="task in sortedList()" :key="task.id">
+      <li v-for="task in sortedList" :key="task.id"> <!-- `sortedList` au lieu de `sortedList()` car c'est maintenant une computed property -->
 
         <to-do :taskProps="task" @update:status="task.status = $event" /> <!-- $event est une variable spéciale de Vue qui
         contient ce que l'enfant a envoyé avec `emit()` -->

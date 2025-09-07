@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script setup lang="js">
 import {ref} from "vue";
 
 
@@ -6,10 +6,11 @@ import {ref} from "vue";
 - **Emits** : Enfant → Parent (événements remontants)
 */
 
+const statusList = ref(["todo", "doing", "done"])
 
 /**
  * Props pour recevoir une tâche depuis le composant parent
- * @property {Object} task - La tâche à afficher et gérer
+ * @property {Object} taskProps - La tâche à afficher et gérer
  */
 const props = defineProps({
   taskProps: {
@@ -33,11 +34,16 @@ const updateStatus = (newStatus) => {
 
 <template>
 <span>
-  <input
-      type="checkbox"
-      :checked="taskProps.status"
-      @change="updateStatus($event.target.checked)"
-  />
+  <select
+      :value="taskProps.status"
+      @change="updateStatus($event.target.value)">
+
+    <option v-for="status in statusList"
+            :key="status"
+            :value="status">
+      {{status}}
+    </option>
+  </select>
   {{taskProps.title}}
 </span>
 </template>
