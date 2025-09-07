@@ -1,35 +1,28 @@
-<script setup lang="ts">
-import {ref} from 'vue'
+<script setup lang="js">
+import { ref } from 'vue';
 
-const toDo = ref({
-  title: '',
-  status: false,
-  date: Date.now() // pour le moment inutile à voir si on garde
-})
+const toDo = ref('')
 const toDoList = ref([])
 const taskHider = ref(false)
 
- const addTask=()=>{
-   if (toDo.value.title.trim() === '') return;
+const addTask = () => {
+  toDoList.value.push({
+    title: toDo.value,
+    status: false,
+    date: Date.now()
+  })
+  toDo.value = ''
+}
 
-   toDoList.value.push({
-     id: crypto.randomUUID(), // créer un id unique
-     title: toDo.value.title,
-     status: toDo.value.status,
-     date: toDo.value.date, // pour le moment inutile à voir si on garde
-    })
-   toDo.value.title = ''
- }
-
- const sortedList = () => {
+const sortedList = () => {
 
   const sortedList = toDoList.value.toSorted((a, b) =>
-      a.status > b.status ? 1 : -1)
-   if (taskHider.value) {
+    a.status > b.status ? 1 : -1)
+  if (taskHider.value) {
     return sortedList.filter(c => c.status === false)
-   }
-   return sortedList
- }
+  }
+  return sortedList
+}
 </script>
 
 <template>
@@ -40,19 +33,20 @@ const taskHider = ref(false)
 
   <div class="to-do-list">
     <ul>
-      <li v-for="task in sortedList()" :key="task.id">
+      <li v-for="toDo in sortedList()" :key="toDo.date">
 
         <span>
-          <input type="checkbox" v-model="task.status" />
-          {{task.title}}
+          <input type="checkbox" v-model="toDo.status" />
+          {{ toDo.title }}
         </span>
 
       </li>
       <li>
-        <form class="add-task"  @submit.prevent="addTask()"> <!-- .prevent empêche de recharger la page sinn tout s'efface -->
-        <input v-model="toDo.title" type="text" placeholder="Nouvelle tâche" class="task-input"/>
-        <button type="submit" class="add-button">Ajouter</button>
-      </form>
+        <form class="add-task" @submit.prevent="addTask">
+          <!-- .prevent empêche de recharger la page sinn tout s'efface -->
+          <input v-model="toDo" type="text" placeholder="Nouvelle tâche" class="task-input" />
+          <button type="submit" class="add-button">Ajouter</button>
+        </form>
       </li>
     </ul>
 
