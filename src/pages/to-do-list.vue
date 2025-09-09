@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {ref, computed} from 'vue'
+import { ref, computed } from 'vue'
 import ToDo from "@/components/to-do-list/to-do.vue";
 
 
@@ -17,17 +17,17 @@ const taskHider = ref(false)
  * Réinitialise le champ de saisie après l'ajout
  */
 
- const addTask=()=>{
-   if (toDo.value.title.trim() === '') return;
+const addTask = () => {
+  if (toDo.value.title.trim() === '') return;
 
-   toDoList.value.push({
-     id: crypto.randomUUID(), // créer un id unique
-     title: toDo.value.title,
-     status: toDo.value.status,
-     date: toDo.value.date, // pour le moment inutile à voir si on garde
-    })
-   toDo.value.title = ''
- }
+  toDoList.value.push({
+    id: crypto.randomUUID(), // créer un id unique
+    title: toDo.value.title,
+    status: toDo.value.status,
+    date: toDo.value.date, // pour le moment inutile à voir si on garde
+  })
+  toDo.value.title = ''
+}
 
 /**
  * Retourne la liste des tâches triées et filtrées en fonction du statut
@@ -35,16 +35,15 @@ const taskHider = ref(false)
  * Si `taskHider` est activé, les tâches accomplies sont filtrées
  * @returns {Array} Liste des tâches triées et filtrées
  */
-
 const sortedList = computed(() => {
-
-  const sortedList = toDoList.value.toSorted((a, b) =>
-      a.status > b.status ? 1 : -1)
-   if (taskHider.value) {
-    return sortedList.filter(c => c.status === "done")
-   }
-   return sortedList
- })
+  const sorted = toDoList.value.slice().sort((a, b) =>
+    a.status > b.status ? 1 : -1
+  );
+  if (taskHider.value) {
+    return sorted.filter(c => c.status !== "done"); // Task accomplished are hidden
+  }
+  return sorted;
+});
 </script>
 
 <template>
@@ -55,17 +54,19 @@ const sortedList = computed(() => {
 
   <div class="to-do-list">
     <ul>
-      <li v-for="task in sortedList" :key="task.id"> <!-- `sortedList` au lieu de `sortedList()` car c'est maintenant une computed property -->
+      <li v-for="task in sortedList" :key="task.id">
+        <!-- `sortedList` au lieu de `sortedList()` car c'est maintenant une computed property -->
 
         <to-do :taskProps="task" @update:status="task.status = $event" /> <!-- $event est une variable spéciale de Vue qui
         contient ce que l'enfant a envoyé avec `emit()` -->
 
       </li>
       <li>
-        <form class="add-task"  @submit.prevent="addTask()"> <!-- .prevent empêche de recharger la page sinn tout s'efface -->
-        <input v-model="toDo.title" type="text" placeholder="Nouvelle tâche" class="task-input"/>
-        <button type="submit" class="add-button">Ajouter</button>
-      </form>
+        <form class="add-task" @submit.prevent="addTask()">
+          <!-- .prevent empêche de recharger la page sinn tout s'efface -->
+          <input v-model="toDo.title" type="text" placeholder="Nouvelle tâche" class="task-input" />
+          <button type="submit" class="add-button">Ajouter</button>
+        </form>
       </li>
     </ul>
 

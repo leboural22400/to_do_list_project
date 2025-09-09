@@ -1,16 +1,17 @@
 <script setup>
 import ToDo from "@/components/to-do-list/to-do.vue";
 import ToDoList from "@/pages/to-do-list.vue";
+import Navbar from "./components/Navbar/Navbar.vue";
 </script>
 
 <template>
-
   <main>
-    <to-do-list/>
+    <to-do-list />
+    <!-- To show the routes -->
+    <Navbar />
+    <router-view></router-view>
   </main>
 
 </template>
 
-<style scoped>
-
-</style>
+<style scoped></style>
