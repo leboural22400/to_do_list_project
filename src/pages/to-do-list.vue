@@ -36,12 +36,11 @@ const taskHider = ref(false)
  * @returns {Array} Liste des tâches triées et filtrées
  */
 
-const sortedList = computed(() => {
+const sortedList = computed(() => { // à adapter au nouveau systeme de status
 
-  const sortedList = toDoList.value.toSorted((a, b) =>
-      a.status > b.status ? 1 : -1)
+  const sortedList = toDoList.value
    if (taskHider.value) {
-    return sortedList.filter(c => c.status === "done")
+    return sortedList.filter(c => c.status !== "done")
    }
    return sortedList
  })
