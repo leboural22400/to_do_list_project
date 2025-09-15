@@ -6,7 +6,7 @@ import Navbar from "./components/Navbar/Navbar.vue";
 
 <template>
   <main>
-    <to-do-list />
+
     <!-- To show the routes -->
     <Navbar />
     <router-view></router-view>

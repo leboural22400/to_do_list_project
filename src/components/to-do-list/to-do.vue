@@ -35,7 +35,7 @@ const updateStatus = (newStatus) => {
 <template>
 <span>
   <select
-      :value="taskProps.status"
+      :value="taskProps.Title_statuts"
       @change="updateStatus($event.target.value)">
 
     <option v-for="status in statusList"
@@ -44,7 +44,7 @@ const updateStatus = (newStatus) => {
       {{status}}
     </option>
   </select>
-  {{taskProps.title}}
+  {{taskProps.Title_task}}
 </span>
 </template>
 
