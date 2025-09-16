@@ -1,5 +1,4 @@
 <script setup>
-import ToDo from "@/components/to-do-list/to-do.vue";
 import ToDoList from "@/pages/to-do-list.vue";
 import Navbar from "./components/Navbar/Navbar.vue";
 </script>

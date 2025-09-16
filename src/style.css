@@ -1,1 +1,37 @@
+/* Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap');
+
+/* Global Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    min-height: 100vh;
+    min-height: 100dvh;
+    width: 100%;
+    background-color: var(--page-bg);
+    color: var(--text-color);
+}
+
+/* Color Variables */
+:root {
+    --page-bg: #1e1e2f;
+    --text-color: #ffffff;
+    --selection-bg: rgba(255, 255, 0, 0.3);
+    --nav-bg: #0d1b2a;
+}
+
+::selection {
+    background-color: var(--selection-bg);
+}
+
+/* Tailwind CSS */
 @import "tailwindcss";
