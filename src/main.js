@@ -2,14 +2,21 @@
 import { createApp } from "vue";
 import { createRouter, createWebHistory } from "vue-router";
 
+// Toast notification
+import Toast from "vue-toastification";
+import "vue-toastification/dist/index.css";
+
 // Styles
 import "./style.css";
+import "./components/Toast/Toast.css";
 
 // Import pages
 import App from "./App.vue";
+import ToDoListHome from "./pages/ToDoListHome.vue";
 import toDoList from "./pages/to-do-list.vue";
 import About from "./pages/About.vue";
 import NotFound from "./pages/NotFound.vue";
+import Account from "./pages/Account.vue";
 import Home from "./pages/Home.vue";
 
 // Router
@@ -39,6 +46,16 @@ const router = createRouter({
         },
         { path: "/:catchAll(.*)", redirect: "/not-found" },
         {
+            path: "/to-do-list-home",
+            name: "ToDoListHome",
+            component: ToDoListHome,
+            meta: {
+                title: "MyToDoList - To-Do List Home",
+                description:
+                    "Welcome to MyToDoList! Start managing your tasks efficiently and stay organized with our user-friendly application.",
+            },
+        },
+        {
             path: "/to-do-list",
             name: "ToDoList",
             component: toDoList,
@@ -46,6 +63,16 @@ const router = createRouter({
                 title: "MyToDoList - Your To-Do List",
                 description:
                     "Manage your tasks efficiently with MyToDoList. Add, edit, and delete tasks to stay organized and productive.",
+            },
+        },
+        {
+            path: "/account",
+            name: "Account",
+            component: Account,
+            meta: {
+                title: "MyToDoList - Account",
+                description:
+                    "Log in to your account or create a new one to start managing your tasks.",
             },
         },
         {
@@ -92,4 +119,15 @@ router.beforeEach((to) => {
 const app = createApp(App);
 
 app.use(router);
+
+// Toast notification
+app.use(Toast, {
+    transition: "Vue-Toastification__bounce",
+    toastClassName: "my-toast",
+    containerClassName: "custom-toast-container",
+    bodyClassName: "my-toast-body",
+    maxToasts: 1,
+    newestOnTop: true
+});
+
 app.mount("#app");

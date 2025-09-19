@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="js">
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue';
 
 const show = ref(false);
@@ -111,6 +111,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+    <!-- Open button for mobile navigation -->
     <button id="openSidebarButton" ref="openBtnRef" @click="openSideBar"
         style="background-color: transparent; border: none;" aria-label="Open sidebar" aria-expanded="false"
         aria-controls="navbar">
@@ -123,9 +124,11 @@ onBeforeUnmount(() => {
         </svg>
     </button>
 
+    <!-- Navigation Menu -->
     <nav id="navbar" ref="navbarRef" :class="{ show }" role="navigation" aria-label="Main">
         <ul>
             <li>
+                <!-- Close button for mobile navigation -->
                 <button id="closeSidebarButton" @click="closeSideBar" aria-label="Close navigation">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -146,10 +149,19 @@ onBeforeUnmount(() => {
             </li>
 
             <li>
-                <RouterLink to="/to-do-list" custom v-slot="{ href, navigate, isActive }">
+                <RouterLink to="/to-do-list-home" custom v-slot="{ href, navigate, isActive }">
                     <a :href="href" class="navlink" :class="{ 'current-link': isActive }"
                         @click.prevent="navigate(); closeSideBar()">
                         To-Do List
+                    </a>
+                </RouterLink>
+            </li>
+
+            <li>
+                <RouterLink to="/account" custom v-slot="{ href, navigate, isActive }">
+                    <a :href="href" class="navlink" :class="{ 'current-link': isActive }"
+                        @click.prevent="navigate(); closeSideBar()">
+                        Account
                     </a>
                 </RouterLink>
             </li>
@@ -165,12 +177,20 @@ onBeforeUnmount(() => {
         </ul>
     </nav>
 
+    <!-- Overlay behind the sidebar when open (mobile) -->
     <div id="overlay" ref="overlayRef" @click="closeSideBar" aria-hidden="true"></div>
 </template>
 
 <style scoped lang="scss">
 nav {
     background-color: var(--nav-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(124, 58, 237, 0.25);
+    box-shadow:
+        0 8px 24px rgba(0, 0, 0, 0.3),
+        0 0 20px rgba(124, 58, 237, 0.3),
+        0 0 40px rgba(6, 182, 212, 0.2);
 }
 
 nav ul {
@@ -180,10 +200,14 @@ nav ul {
     margin: 0;
 }
 
+// Pushes the "Home" link to the left in desktop mode for ergonomic reasons
+// Otherwise it doesn't look good
 nav .home {
     margin-right: auto;
 }
 
+// I added this to fix a weird bug where the sidebar would be slightly off-screen
+// Using a flex often fix the alignment issues (no other particular reason)
 nav li {
     display: flex;
 }
@@ -201,6 +225,7 @@ nav li {
     background-color: #333;
 }
 
+// Indicates the current active route in the navbar
 .current-link {
     border-bottom: 2px solid white;
 }
@@ -216,6 +241,8 @@ nav li {
     cursor: pointer;
 }
 
+// Position fixed and inset 0 to cover the entire screen
+// z-index 9 to be behind the navbar (z-index 10)
 #overlay {
     background: rgba(0, 0, 0, 0.5);
     position: fixed;
