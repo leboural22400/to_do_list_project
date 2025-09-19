@@ -39,13 +39,10 @@ onMounted( async() => {
 });
 
 
-
-
 /**
  * Ajoute une nouvelle tâche à la liste si le titre n'est pas vide
  * Réinitialise le champ de saisie après l'ajout
  */
-
  const addTask=()=>{
    if (toDo.value.title.trim() === '') return;
 
