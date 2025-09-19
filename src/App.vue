@@ -1,17 +1,38 @@
 <script setup>
-import ToDo from "@/components/to-do-list/to-do.vue";
-import ToDoList from "@/pages/to-do-list.vue";
+// Import components
 import Navbar from "./components/Navbar/Navbar.vue";
+import Footer from "./components/Footer/Footer.vue";
+import ScrollBtn from "./components/ScrollBtn/ScrollBtn.vue";
+import Toast from "./components/Toast/Toast.vue";
+
+// Styles
+import "./components/Toast/Toast.css";
 </script>
 
 <template>
-  <main>
-
+  <div class="app-container">
     <!-- To show the routes -->
     <Navbar />
-    <router-view></router-view>
-  </main>
-
+    <main class="main-content">
+      <router-view></router-view>
+    </main>
+    <!-- Scroll to top button -->
+    <ScrollBtn />
+    <Footer />
+    <Toast />
+  </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+</style>

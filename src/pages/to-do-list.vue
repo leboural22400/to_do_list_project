@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {ref, computed, onMounted} from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import ToDo from "@/components/to-do-list/to-do.vue";
 import TaskService from "../services/taskService"
 
@@ -18,7 +18,7 @@ const toDo = ref({
 })
 
 // Charger les données au montage du composant
-onMounted( async() => {
+onMounted(async () => {
   try {
     // Pour récupérer les tâches d'une liste spécifique
     tasks.value = await taskService.fetchTasksByListId('1');
@@ -39,22 +39,25 @@ onMounted( async() => {
 });
 
 
+
+
 /**
  * Ajoute une nouvelle tâche à la liste si le titre n'est pas vide
  * Réinitialise le champ de saisie après l'ajout
  */
- const addTask=()=>{
-   if (toDo.value.title.trim() === '') return;
 
-   toDoList.value.push({
-     ID_task: crypto.randomUUID(), // créer un id unique
-     Title_task: toDo.value.title,
-     ID_statuts: toDo.value.status,
-     ID_list: '',
-     date: toDo.value.date, // pour le moment inutile à voir si on garde
-    })
-   toDo.value.title = ''
- }
+const addTask = () => {
+  if (toDo.value.title.trim() === '') return;
+
+  toDoList.value.push({
+    ID_task: crypto.randomUUID(), // créer un id unique
+    Title_task: toDo.value.title,
+    ID_statuts: toDo.value.status,
+    ID_list: '',
+    date: toDo.value.date, // pour le moment inutile à voir si on garde
+  })
+  toDo.value.title = ''
+}
 
 /**
  * Retourne la liste des tâches triées et filtrées en fonction du statut
@@ -66,11 +69,11 @@ onMounted( async() => {
 const sortedList = computed(() => { // à adapter au nouveau systeme de status
 
   const sortedList = toDoList.value
-   if (taskHider.value) {
+  if (taskHider.value) {
     return sortedList.filter(c => c.ID_statuts !== "done")
-   }
-   return sortedList
- })
+  }
+  return sortedList
+})
 </script>
 
 <template>
@@ -81,17 +84,19 @@ const sortedList = computed(() => { // à adapter au nouveau systeme de status
 
   <div class="to-do-list">
     <ul>
-      <li v-for="task in sortedList" :key="task.ID_task"> <!-- `sortedList` au lieu de `sortedList()` car c'est maintenant une computed property -->
+      <li v-for="task in sortedList" :key="task.ID_task">
+        <!-- `sortedList` au lieu de `sortedList()` car c'est maintenant une computed property -->
 
         <to-do :taskProps="task" @update:status="task.status = $event" /> <!-- $event est une variable spéciale de Vue qui
         contient ce que l'enfant a envoyé avec `emit()` -->
 
       </li>
       <li>
-        <form class="add-task"  @submit.prevent="addTask()"> <!-- .prevent empêche de recharger la page sinn tout s'efface -->
-        <input v-model="toDo.title" type="text" placeholder="Nouvelle tâche" class="task-input"/>
-        <button type="submit" class="add-button">Ajouter</button>
-      </form>
+        <form class="add-task" @submit.prevent="addTask()">
+          <!-- .prevent empêche de recharger la page sinn tout s'efface -->
+          <input v-model="toDo.title" type="text" placeholder="Nouvelle tâche" class="task-input" />
+          <button type="submit" class="add-button">Ajouter</button>
+        </form>
       </li>
     </ul>
 
