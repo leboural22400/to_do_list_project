@@ -1,3 +1,4 @@
+<!-- Unsplash Images (to clean up the code) -->
 <script setup lang="js">
 </script>
 
@@ -6,3 +7,4 @@
 
 <style scoped lang="scss">
 </style>
+

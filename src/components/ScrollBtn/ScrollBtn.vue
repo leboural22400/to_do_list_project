@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="js">
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 
 const showScrollTop = ref(false);
@@ -51,5 +51,12 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll));
 
 .scroll-top-btn:hover {
     opacity: 0.8;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .scroll-top-btn {
+        display: none;
+    }
 }
 </style>

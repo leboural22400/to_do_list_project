@@ -8,7 +8,6 @@ import "vue-toastification/dist/index.css";
 
 // Styles
 import "./style.css";
-import "./components/Toast/Toast.css";
 
 // Import pages
 import App from "./App.vue";
@@ -88,6 +87,7 @@ const router = createRouter({
 });
 
 // Navigation guard to dynamically change the title and description
+// Based on https://dev.to/jacobandrewsky/dynamic-page-title-and-description-with-vue-router-4oni
 router.beforeEach((to) => {
     const { title, description } = to.meta;
     const defaultTitle = "MyToDoList";

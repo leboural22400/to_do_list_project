@@ -183,6 +183,9 @@ onBeforeUnmount(() => {
 
 <style scoped lang="scss">
 nav {
+    position: sticky;
+    top: 0;
+    z-index: 10;
     background-color: var(--nav-bg);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);

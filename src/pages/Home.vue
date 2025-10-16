@@ -1,8 +1,8 @@
-<!-- I used typescript this time, because it would be terrible otherwise to manage the types -->
 <script setup lang="js">
 // Components and assets imports
 import Masonry from '@/components/Masonry/Masonry.vue';
 import heroImg from '@/components/icons/MyToDoListHero.png';
+import Quote from '@/components/Quote/Quote.vue';
 
 // Pages imports
 import ToDoListHome from './ToDoListHome.vue';
@@ -155,6 +155,17 @@ function toggleDemoTask(id) {
 function removeDemoTask(id) {
     demoTasks.value = demoTasks.value.filter(t => t.id !== id);
 }
+
+// Quote props
+const quoteProps = {
+    quote: "With MyToDoList, I organize my daily tasks effortlessly and stay productive every day.",
+    author: "John Doe",
+    authorImg: "https://images.unsplash.com/photo-1511367461989-f85a21fda167?auto=format&fit=facearea&w=128&h=128&facepad=2",
+    authorAlt: "profile picture",
+    authorStatus: "MyToDoList user",
+    variant: "elevated",
+    accent: "emerald"
+};
 </script>
 
 <template>
@@ -246,6 +257,21 @@ function removeDemoTask(id) {
                 <span>•</span>
                 <span>{{ total }} in total</span>
             </div>
+        </div>
+    </section>
+
+    <!-- Quote component -->
+    <section class="quote-section" aria-label="User testimonial">
+        <div class="quote-container">
+            <Quote 
+                :quote="quoteProps.quote"
+                :author="quoteProps.author"
+                :author-img="quoteProps.authorImg"
+                :author-alt="quoteProps.authorAlt"
+                :author-status="quoteProps.authorStatus"
+                size="lg"
+                :glow="true"
+            />
         </div>
     </section>
 </template>
@@ -699,5 +725,38 @@ $pad-x: clamp(1rem, 4vw, 2rem);
         font-size: .95rem;
         padding: .25rem 1.25rem 1.1rem 1.25rem;
     }
+}
+
+/* Quote section */
+.quote-section {
+    padding: clamp(4rem, 8vw, 8rem) 0;
+    background: linear-gradient(
+        135deg,
+        var(--surface) 0%,
+        var(--surface-2) 50%,
+        var(--surface) 100%
+    );
+    position: relative;
+    overflow: hidden;
+
+    &::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+            1200px 400px at 50% 50%,
+            rgba(99, 102, 241, 0.08),
+            transparent 70%
+        );
+        pointer-events: none;
+    }
+}
+
+.quote-container {
+    margin-inline: auto;
+    max-width: $max-w;
+    padding-inline: $pad-x;
+    position: relative;
+    z-index: 1;
 }
 </style>

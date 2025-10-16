@@ -19,6 +19,13 @@ function formatPageName(path) {
         .toUpperCase() || "HOME";
 }
 
+/**
+ * Display a random notification message based on the current page.
+ * The message is selected from a predefined list.
+ * The toast appears at the top-right corner and disappears after 2.5 seconds.
+ * The function is called on initial load and on every route change.
+ * The first load is ignored to prevent duplicate notifications.
+ */
 const showNotification = () => {
     const pageName = formatPageName(route.path);
 

@@ -1,5 +1,6 @@
 /* Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
 /* Global Styles */
 * {
@@ -9,6 +10,7 @@
     font-family: 'Poppins', sans-serif;
 }
 
+/* Scroll Behavior of the web page */
 html,
 body {
     scroll-behavior: smooth;
@@ -59,27 +61,6 @@ body {
     --info: #38bdf8;
     --warning: #f59e0b;
     --error: #ef4444;
-}
-
-@media (prefers-color-scheme: light) {
-    :root {
-        --surface: #f7fafc;
-        --surface-2: #fff;
-        --fg: #0f172a;
-        --muted: #475569;
-        --border: rgba(15, 23, 42, 0.12);
-        --border-strong: rgba(15, 23, 42, 0.18);
-        --chip: rgba(15, 23, 42, 0.035);
-        --chip-border: rgba(15, 23, 42, 0.12);
-        --pill-bg: rgba(99, 102, 241, 0.18);
-        --pill-fg: #3730a3;
-        --btn: linear-gradient(180deg, #4f46e5, #4338ca);
-        --btn-fg: #fff;
-        --btn-border: rgba(15, 23, 42, 0.12);
-        --ghost-hover: rgba(15, 23, 42, 0.06);
-        --focus: rgba(59, 130, 246, 0.45);
-        --grid-color: rgba(2, 6, 23, 0.06);
-    }
 }
 
 ::selection {

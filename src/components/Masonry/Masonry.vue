@@ -134,11 +134,6 @@ onBeforeUnmount(() => {
     io?.disconnect();
     mediaQuery?.removeEventListener('change', updateMobileState);
 });
-
-/**
- * For mobile responsiveness, we only display 3 images of the Masonry component
- * when the screen width is less than 600px.
- */
 </script>
 
 <template>

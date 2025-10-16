@@ -4,6 +4,7 @@ const year = new Date().getFullYear();
 </script>
 
 <template>
+    <!-- The links will be added later -->
     <footer class="site-footer" aria-label="Footer">
         <div class="footer__container">
             <nav class="footer__grid" aria-label="Footer navigation">
@@ -104,9 +105,6 @@ const year = new Date().getFullYear();
 </template>
 
 <style scoped lang="scss">
-// Font import
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-
 // For the animated border
 @property --fill {
     syntax: '<percentage>';
