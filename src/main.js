@@ -12,7 +12,6 @@ import "./style.css";
 // Import pages
 import App from "./App.vue";
 import ToDoListHome from "./pages/ToDoListHome.vue";
-import toDoList from "./pages/to-do-list.vue";
 import About from "./pages/About.vue";
 import NotFound from "./pages/NotFound.vue";
 import Account from "./pages/Account.vue";
@@ -52,16 +51,6 @@ const router = createRouter({
                 title: "MyToDoList - To-Do List Home",
                 description:
                     "Welcome to MyToDoList! Start managing your tasks efficiently and stay organized with our user-friendly application.",
-            },
-        },
-        {
-            path: "/to-do-list",
-            name: "ToDoList",
-            component: toDoList,
-            meta: {
-                title: "MyToDoList - Your To-Do List",
-                description:
-                    "Manage your tasks efficiently with MyToDoList. Add, edit, and delete tasks to stay organized and productive.",
             },
         },
         {

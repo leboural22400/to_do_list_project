@@ -2,6 +2,7 @@
 // Toast notification
 import { useToast } from 'vue-toastification';
 import ToDoList from '../ToDoList/ToDoList.vue';
+import UnsplashImages from '../UnsplashImages/UnsplashImages.vue';
 
 const UNSPLASH_BASE = "https://api.unsplash.com";
 
@@ -13,6 +14,9 @@ const QUOTA_KEY = "unsplash-quota-v1";
 
 export default {
     name: "TodoCards",
+    components: {
+        UnsplashImages
+    },
     setup() {
         const toast = useToast();
         return { toast };
@@ -760,125 +764,10 @@ export default {
 
                 <!-- Default images: zero API calls -->
                 <div class="results" :class="{ loading }" v-if="useDefaults">
-                    <!-- Section: Colorful Backgrounds -->
-                    <div class="section-title">Colorful Backgrounds</div>
-                    <div class="section-grid">
-                        <div v-for="(url, i) in defaultImagePool.slice(0, 6)" :key="i" class="result"
-                            @click="selectDefault(url)" title="Colorful backgrounds">
-                            <img :src="url" alt="Colorful background" loading="lazy" />
-                            <div class="credit">Colorful</div>
-                        </div>
-                    </div>
-
-                    <!-- Section: Landscapes Backgrounds -->
-                    <div class="section-title">Landscapes Backgrounds</div>
-                    <div class="section-grid">
-                        <div v-for="(url, i) in defaultImagePool.slice(6, 12)" :key="i + 6" class="result"
-                            @click="selectDefault(url)" title="Landscapes backgrounds">
-                            <img :src="url" alt="Landscapes background" loading="lazy" />
-                            <div class="credit">Landscape</div>
-                        </div>
-                    </div>
-
-                    <!-- Section: Cities Backgrounds -->
-                    <div class="section-title">Cities Backgrounds</div>
-                    <div class="section-grid">
-                        <div v-for="(url, i) in defaultImagePool.slice(12, 18)" :key="i + 12" class="result"
-                            @click="selectDefault(url)" title="Cities backgrounds">
-                            <img :src="url" alt="Cities background" loading="lazy" />
-                            <div class="credit">Cities</div>
-                        </div>
-                    </div>
-
-                    <!-- Section: Streets Backgrounds -->
-                    <div class="section-title">Streets Backgrounds</div>
-                    <div class="section-grid">
-                        <div v-for="(url, i) in defaultImagePool.slice(18, 24)" :key="i + 18" class="result"
-                            @click="selectDefault(url)" title="Streets backgrounds">
-                            <img :src="url" alt="Streets background" loading="lazy" />
-                            <div class="credit">Streets</div>
-                        </div>
-                    </div>
-
-                    <!-- Section: Art Backgrounds -->
-                    <div class="section-title">Art Backgrounds</div>
-                    <div class="section-grid">
-                        <div v-for="(url, i) in defaultImagePool.slice(24, 30)" :key="i + 24" class="result"
-                            @click="selectDefault(url)" title="Art backgrounds">
-                            <img :src="url" alt="Art background" loading="lazy" />
-                            <div class="credit">Art</div>
-                        </div>
-                    </div>
-
-                    <!-- Section: Food Backgrounds -->
-                    <div class="section-title">Food Backgrounds</div>
-                    <div class="section-grid">
-                        <div v-for="(url, i) in defaultImagePool.slice(30, 36)" :key="i + 30" class="result"
-                            @click="selectDefault(url)" title="Food backgrounds">
-                            <img :src="url" alt="Food background" loading="lazy" />
-                            <div class="credit">Food</div>
-                        </div>
-                    </div>
-
-                    <!-- Section: Technology and coding Backgrounds -->
-                    <div class="section-title">Technology & Coding Backgrounds</div>
-                    <div class="section-grid">
-                        <div v-for="(url, i) in defaultImagePool.slice(36, 42)" :key="i + 36" class="result"
-                            @click="selectDefault(url)" title="Technology and coding backgrounds">
-                            <img :src="url" alt="Technology and coding background" loading="lazy" />
-                            <div class="credit">Tech & Code</div>
-                        </div>
-                    </div>
-
-                    <!-- Section: Space Backgrounds -->
-                    <div class="section-title">Space Backgrounds</div>
-                    <div class="section-grid">
-                        <div v-for="(url, i) in defaultImagePool.slice(42, 48)" :key="i + 42" class="result"
-                            @click="selectDefault(url)" title="Space backgrounds">
-                            <img :src="url" alt="Space background" loading="lazy" />
-                            <div class="credit">Space</div>
-                        </div>
-                    </div>
-
-                    <!-- Section: Flowers and Plants Backgrounds -->
-                    <div class="section-title">Flowers & Plants Backgrounds</div>
-                    <div class="section-grid">
-                        <div v-for="(url, i) in defaultImagePool.slice(48, 54)" :key="i + 48" class="result"
-                            @click="selectDefault(url)" title="Flowers and plants backgrounds">
-                            <img :src="url" alt="Flowers and plants background" loading="lazy" />
-                            <div class="credit">Flowers & Plants</div>
-                        </div>
-                    </div>
-
-                    <!-- Section: Animals Backgrounds -->
-                    <div class="section-title">Animals Backgrounds</div>
-                    <div class="section-grid">
-                        <div v-for="(url, i) in defaultImagePool.slice(54, 60)" :key="i + 54" class="result"
-                            @click="selectDefault(url)" title="Animals backgrounds">
-                            <img :src="url" alt="Animals background" loading="lazy" />
-                            <div class="credit">Animals</div>
-                        </div>
-                    </div>
-
-                    <!-- Section: Cartoons Backgrounds -->
-                    <div class="section-title">Cartoons Backgrounds</div>
-                    <div class="section-grid">
-                        <div v-for="(url, i) in defaultImagePool.slice(60, 66)" :key="i + 60" class="result"
-                            @click="selectDefault(url)" title="Cartoons backgrounds">
-                            <img :src="url" alt="Cartoons background" loading="lazy" />
-                            <div class="credit">Cartoons</div>
-                        </div>
-                    </div>
-
-                    <!-- Section: Anime/Manga Backgrounds -->
-                    <div class="section-title">Anime & Manga Backgrounds</div>
-                    <div class="section-grid">
-                        <div v-for="(url, i) in defaultImagePool.slice(66, 72)" :key="i + 66" class="result"
-                            @click="selectDefault(url)" title="Anime and manga backgrounds">
-                            <img :src="url" alt="Anime and manga background" loading="lazy" />
-                            <div class="credit">Anime & Manga</div>
-                        </div>
-                    </div>
+                    <UnsplashImages 
+                        :default-image-pool="defaultImagePool"
+                        :on-select-image="selectDefault"
+                    />
                 </div>
 
                 <!-- Unsplash results: only after explicit action -->
@@ -1484,26 +1373,7 @@ export default {
     opacity: .9;
 }
 
-.section-title {
-    grid-column: 1 / -1;
-    font-size: 14px;
-    font-weight: 600;
-    color: #cfe9ff;
-    margin: 12px 0 6px 0;
-    padding-bottom: 6px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
 
-    @media (max-width: 768px) {
-        font-size: 12px;
-        margin: 8px 0 4px 0;
-    }
-}
-
-.section-title:first-child {
-    margin-top: 0;
-}
 
 .thumb.editing-image {
     cursor: crosshair;
@@ -1565,23 +1435,6 @@ export default {
         left: 50%;
         top: 0;
         transform: translateX(-50%);
-    }
-}
-
-.section-grid {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 8px;
-    margin-bottom: 8px;
-
-    @media (max-width: 768px) {
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-        gap: 6px;
-    }
-
-    @media (max-width: 480px) {
-        grid-template-columns: repeat(2, 1fr);
     }
 }
 
