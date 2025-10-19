@@ -704,11 +704,24 @@ export default {
 .modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, .55);
+    background: rgba(0, 0, 0, .65);
+    backdrop-filter: blur(4px);
     display: grid;
     place-items: center;
     z-index: 1000;
-    padding: 8px;
+    padding: 16px;
+    animation: fadeInBackdrop 0.2s ease-out;
+}
+
+@keyframes fadeInBackdrop {
+    from {
+        opacity: 0;
+        backdrop-filter: blur(0px);
+    }
+    to {
+        opacity: 1;
+        backdrop-filter: blur(4px);
+    }
 }
 
 .thumb.editing-image {
@@ -881,19 +894,116 @@ export default {
 
 /* Task Modal */
 .task-modal {
-    width: min(500px, 90vw);
-    background: #14192b;
-    border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, .08);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, .6);
+    width: min(520px, 95vw);
+    max-height: min(80vh, 700px);
+    background: linear-gradient(145deg, #14192b, #16213a);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, .12);
+    box-shadow: 
+        0 25px 80px rgba(0, 0, 0, .7),
+        0 0 0 1px rgba(0, 180, 255, .08),
+        inset 0 1px 0 rgba(255, 255, 255, .1);
     overflow: hidden;
+    animation: slideInModal 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+}
+
+@keyframes slideInModal {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, #1e2750, #1a2447);
+    border-bottom: 1px solid rgba(0, 180, 255, 0.15);
+    position: relative;
+
+    &::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(0, 180, 255, 0.3), transparent);
+    }
+
+    h2 {
+        margin: 0;
+        font-size: 20px;
+        color: #e1f0ff;
+        font-weight: 700;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .close {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: #e1f0ff;
+        font-size: 18px;
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+
+        &:hover {
+            background: rgba(255, 86, 86, 0.15);
+            border-color: rgba(255, 86, 86, 0.3);
+            color: #ff9999;
+            transform: translateY(-1px);
+        }
+
+        &:active {
+            transform: translateY(0);
+        }
+    }
 }
 
 .task-form {
-    padding: 20px;
+    padding: 24px 24px 20px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 20px;
+    max-height: calc(80vh - 160px);
+    overflow-y: auto;
+
+    /* Custom scrollbar */
+    &::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 3px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: rgba(0, 180, 255, 0.3);
+        border-radius: 3px;
+
+        &:hover {
+            background: rgba(0, 180, 255, 0.5);
+        }
+    }
 }
 
 .form-group {
@@ -914,76 +1024,177 @@ export default {
 
 .form-group label {
     font-size: 13px;
-    font-weight: 600;
-    color: #cfe9ff;
+    font-weight: 700;
+    color: #b8d4ff;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.08em;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    &::before {
+        content: "";
+        width: 3px;
+        height: 3px;
+        background: rgba(0, 180, 255, 0.6);
+        border-radius: 50%;
+    }
 }
 
 .form-group input,
 .form-group select {
-    padding: 10px 12px;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, .12);
-    background: #0f1525;
-    color: #e9edf8;
-    font-size: 14px;
-    transition: all 0.2s ease;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, .15);
+    background: linear-gradient(145deg, #0d1420, #111929);
+    color: #f0f5ff;
+    font-size: 15px;
+    font-weight: 500;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
 
     &:focus {
         outline: none;
-        border-color: rgba(0, 180, 255, 0.4);
-        box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.1);
+        border-color: rgba(0, 180, 255, 0.6);
+        box-shadow: 
+            0 0 0 3px rgba(0, 180, 255, 0.15),
+            inset 0 1px 3px rgba(0, 0, 0, 0.2),
+            0 4px 12px rgba(0, 180, 255, 0.1);
+        background: linear-gradient(145deg, #0f1525, #141d2e);
+        transform: translateY(-1px);
     }
 
     &::placeholder {
-        color: #7a8ba0;
-        opacity: 0.8;
+        color: #8494b8;
+        opacity: 0.9;
+        font-weight: 400;
+    }
+
+    &:hover:not(:focus) {
+        border-color: rgba(255, 255, 255, .2);
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
     }
 }
 
 .form-group select {
     cursor: pointer;
+    
+    /* Specific styling for priority select */
+    &#taskPriority {
+        option {
+            background: #1a2035;
+            color: #f0f5ff;
+            padding: 8px 12px;
+            
+            &[value="high"] {
+                background: linear-gradient(135deg, #2a1f1f, #1a2035);
+                color: #ffb3b3;
+            }
+            
+            &[value="medium"] {
+                background: linear-gradient(135deg, #2a2519, #1a2035);
+                color: #ffd699;
+            }
+            
+            &[value="low"] {
+                background: linear-gradient(135deg, #1f2a22, #1a2035);
+                color: #b3ffcc;
+            }
+        }
+    }
 }
 
 .form-actions {
     display: flex;
-    gap: 12px;
-    margin-top: 8px;
-    padding-top: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    gap: 14px;
+    margin-top: 12px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(0, 180, 255, 0.12);
+    position: relative;
+
+    &::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60px;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(0, 180, 255, 0.4), transparent);
+    }
 }
 
 .btn-cancel,
 .btn-submit {
     flex: 1;
-    padding: 10px 16px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s ease;
-    border: 1px solid rgba(255, 255, 255, .12);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(255, 255, 255, .15);
+    position: relative;
+    overflow: hidden;
+
+    &::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+        transform: translateX(-100%);
+        transition: transform 0.6s ease;
+    }
+
+    &:hover::before {
+        transform: translateX(100%);
+    }
 }
 
 .btn-cancel {
-    background: transparent;
-    color: #e9edf8;
+    background: rgba(255, 255, 255, 0.06);
+    color: #d5e4ff;
+    border-color: rgba(255, 255, 255, 0.2);
 
     &:hover {
-        background: rgba(255, 255, 255, 0.05);
+        background: rgba(255, 255, 255, 0.12);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    &:active {
+        transform: translateY(-1px);
     }
 }
 
 .btn-submit {
-    background: linear-gradient(135deg, rgba(0, 180, 255, 0.2), rgba(0, 140, 255, 0.15));
-    border-color: rgba(0, 180, 255, 0.3);
-    color: #00b4ff;
+    background: linear-gradient(135deg, rgba(0, 180, 255, 0.25), rgba(0, 140, 255, 0.2));
+    border-color: rgba(0, 180, 255, 0.4);
+    color: #4dd0ff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    position: relative;
 
     &:hover {
-        background: linear-gradient(135deg, rgba(0, 180, 255, 0.3), rgba(0, 140, 255, 0.2));
+        background: linear-gradient(135deg, rgba(0, 180, 255, 0.4), rgba(0, 140, 255, 0.3));
+        transform: translateY(-2px);
+        box-shadow: 
+            0 8px 25px rgba(0, 180, 255, 0.25),
+            0 0 20px rgba(0, 180, 255, 0.15);
+        border-color: rgba(0, 180, 255, 0.6);
+        color: #66d9ff;
+    }
+
+    &:active {
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 180, 255, 0.2);
+    }
+
+    &:focus {
+        outline: none;
+        box-shadow: 
+            0 0 0 3px rgba(0, 180, 255, 0.3),
+            0 8px 25px rgba(0, 180, 255, 0.25);
     }
 }
 
