@@ -1,6 +1,17 @@
 <script>
+import UnsplashImages from '../UnsplashImages/UnsplashImages.vue';
+import { TaskDataService } from '../../services/taskDataService.js';
+import { useToast } from 'vue-toastification';
+
 export default {
     name: 'ToDoList',
+    components: {
+        UnsplashImages
+    },
+    setup() {
+        const toast = useToast();
+        return { toast };
+    },
     props: {
         task: {
             type: Object,
@@ -8,38 +19,8 @@ export default {
         }
     },
     data() {
-        // Sample todo items
         return {
-            todoItems: [
-                {
-                    id: 1,
-                    title: 'Set up Git repository',
-                    description: 'Initialize a new Git repository and connect to GitHub',
-                    tags: ['setup', 'git'],
-                    completed: true
-                },
-                {
-                    id: 2,
-                    title: 'Learn basic Git commands',
-                    description: 'Master add, commit, push, pull commands',
-                    tags: ['commands', 'basics'],
-                    completed: false
-                },
-                {
-                    id: 3,
-                    title: 'Understand branching',
-                    description: 'Learn how to create and merge branches',
-                    tags: ['branching', 'workflow'],
-                    completed: false
-                },
-                {
-                    id: 4,
-                    title: 'Practice with pull requests',
-                    description: 'Create and review pull requests on GitHub',
-                    tags: ['github', 'collaboration'],
-                    completed: false
-                }
-            ],
+            todoItems: this.getTaskSpecificItems(),
             itemModal: {
                 open: false,
                 mode: 'create',
@@ -49,6 +30,10 @@ export default {
                     description: '',
                     tagsText: ''
                 }
+            },
+            gallery: {
+                open: false,
+                forItemId: null
             }
         };
     },
@@ -74,12 +59,327 @@ export default {
         }
     },
     methods: {
+        getTaskSpecificItems() {
+            // Return different sub-items based on the task
+            const taskItems = {
+                1: [ // "Use Git and GitHub"
+                    {
+                        id: 1,
+                        title: 'Set up Git repository',
+                        description: 'Initialize a new Git repository and connect to GitHub',
+                        tags: ['setup', 'git'],
+                        completed: true
+                    },
+                    {
+                        id: 2,
+                        title: 'Learn basic Git commands',
+                        description: 'Master add, commit, push, pull commands',
+                        tags: ['commands', 'basics'],
+                        completed: false
+                    },
+                    {
+                        id: 3,
+                        title: 'Understand branching',
+                        description: 'Learn how to create and merge branches',
+                        tags: ['branching', 'workflow'],
+                        completed: false
+                    },
+                    {
+                        id: 4,
+                        title: 'Practice with pull requests',
+                        description: 'Create and review pull requests on GitHub',
+                        tags: ['github', 'collaboration'],
+                        completed: false
+                    }
+                ],
+                2: [ // "Submit C Lab"
+                    {
+                        id: 1,
+                        title: 'Review lab requirements',
+                        description: 'Read through all the lab specifications and requirements',
+                        tags: ['preparation', 'requirements'],
+                        completed: false
+                    },
+                    {
+                        id: 2,
+                        title: 'Code the main functions',
+                        description: 'Implement the core functionality required for the lab',
+                        tags: ['coding', 'implementation'],
+                        completed: false
+                    },
+                    {
+                        id: 3,
+                        title: 'Test and debug',
+                        description: 'Test all functions and fix any bugs found',
+                        tags: ['testing', 'debugging'],
+                        completed: false
+                    },
+                    {
+                        id: 4,
+                        title: 'Write documentation',
+                        description: 'Document the code and create submission report',
+                        tags: ['documentation', 'report'],
+                        completed: false
+                    }
+                ],
+                3: [ // "Review binary systems"
+                    {
+                        id: 1,
+                        title: 'Binary number representation',
+                        description: 'Understand how binary numbers work and conversions',
+                        tags: ['theory', 'conversion'],
+                        completed: false
+                    },
+                    {
+                        id: 2,
+                        title: 'Boolean algebra basics',
+                        description: 'Learn AND, OR, NOT operations and truth tables',
+                        tags: ['boolean', 'operations'],
+                        completed: false
+                    },
+                    {
+                        id: 3,
+                        title: 'Practice exercises',
+                        description: 'Solve binary arithmetic and logic problems',
+                        tags: ['practice', 'exercises'],
+                        completed: false
+                    }
+                ],
+                4: [ // "Fix linked list"
+                    {
+                        id: 1,
+                        title: 'Identify the bug',
+                        description: 'Debug and find the issue in the linked list implementation',
+                        tags: ['debugging', 'analysis'],
+                        completed: true
+                    },
+                    {
+                        id: 2,
+                        title: 'Implement fix',
+                        description: 'Apply the necessary code changes to fix the issue',
+                        tags: ['implementation', 'fix'],
+                        completed: true
+                    },
+                    {
+                        id: 3,
+                        title: 'Test the solution',
+                        description: 'Verify that the linked list works correctly after the fix',
+                        tags: ['testing', 'verification'],
+                        completed: true
+                    }
+                ],
+                5: [ // "Prepare democracy slides"
+                    {
+                        id: 1,
+                        title: 'Research democratic principles',
+                        description: 'Gather information about key democratic concepts',
+                        tags: ['research', 'theory'],
+                        completed: false
+                    },
+                    {
+                        id: 2,
+                        title: 'Create slide outline',
+                        description: 'Structure the presentation with main topics',
+                        tags: ['planning', 'structure'],
+                        completed: false
+                    },
+                    {
+                        id: 3,
+                        title: 'Design slides',
+                        description: 'Create visually appealing slides with content',
+                        tags: ['design', 'creation'],
+                        completed: false
+                    }
+                ],
+                6: [ // "Work on web project"
+                    {
+                        id: 1,
+                        title: 'Plan project structure',
+                        description: 'Design the overall architecture and file organization',
+                        tags: ['planning', 'architecture'],
+                        completed: false
+                    },
+                    {
+                        id: 2,
+                        title: 'Set up development environment',
+                        description: 'Install necessary tools and configure workspace',
+                        tags: ['setup', 'environment'],
+                        completed: false
+                    },
+                    {
+                        id: 3,
+                        title: 'Create frontend components',
+                        description: 'Develop the user interface components',
+                        tags: ['frontend', 'components'],
+                        completed: false
+                    },
+                    {
+                        id: 4,
+                        title: 'Implement backend functionality',
+                        description: 'Create server-side logic and API endpoints',
+                        tags: ['backend', 'api'],
+                        completed: false
+                    }
+                ],
+                7: [ // "Study for math exam"
+                    {
+                        id: 1,
+                        title: 'Review calculus formulas',
+                        description: 'Go through differentiation and integration formulas',
+                        tags: ['calculus', 'formulas'],
+                        completed: false
+                    },
+                    {
+                        id: 2,
+                        title: 'Practice problem sets',
+                        description: 'Solve practice problems from each chapter',
+                        tags: ['practice', 'problems'],
+                        completed: false
+                    },
+                    {
+                        id: 3,
+                        title: 'Review past exams',
+                        description: 'Go through previous exam questions and solutions',
+                        tags: ['review', 'exams'],
+                        completed: false
+                    }
+                ],
+                8: [ // "Finish physics lab report"
+                    {
+                        id: 1,
+                        title: 'Analyze experimental data',
+                        description: 'Process and analyze the collected lab data',
+                        tags: ['analysis', 'data'],
+                        completed: false
+                    },
+                    {
+                        id: 2,
+                        title: 'Write methodology section',
+                        description: 'Document the experimental procedure and methods',
+                        tags: ['writing', 'methodology'],
+                        completed: false
+                    },
+                    {
+                        id: 3,
+                        title: 'Create graphs and charts',
+                        description: 'Visualize the results with appropriate graphs',
+                        tags: ['visualization', 'graphs'],
+                        completed: false
+                    },
+                    {
+                        id: 4,
+                        title: 'Write conclusions',
+                        description: 'Summarize findings and draw conclusions',
+                        tags: ['conclusions', 'summary'],
+                        completed: false
+                    }
+                ],
+                9: [ // "Write French essay"
+                    {
+                        id: 1,
+                        title: 'Research the topic',
+                        description: 'Gather information and sources for the essay',
+                        tags: ['research', 'sources'],
+                        completed: false
+                    },
+                    {
+                        id: 2,
+                        title: 'Create essay outline',
+                        description: 'Structure the essay with introduction, body, and conclusion',
+                        tags: ['outline', 'structure'],
+                        completed: false
+                    },
+                    {
+                        id: 3,
+                        title: 'Write first draft',
+                        description: 'Complete the initial version of the essay',
+                        tags: ['writing', 'draft'],
+                        completed: false
+                    },
+                    {
+                        id: 4,
+                        title: 'Review and edit',
+                        description: 'Proofread and improve the essay content',
+                        tags: ['editing', 'proofreading'],
+                        completed: false
+                    }
+                ],
+                10: [ // "Practice coding problems"
+                    {
+                        id: 1,
+                        title: 'Array manipulation problems',
+                        description: 'Solve problems involving array operations',
+                        tags: ['arrays', 'algorithms'],
+                        completed: false
+                    },
+                    {
+                        id: 2,
+                        title: 'String processing challenges',
+                        description: 'Work on string manipulation and parsing problems',
+                        tags: ['strings', 'parsing'],
+                        completed: false
+                    },
+                    {
+                        id: 3,
+                        title: 'Data structure implementations',
+                        description: 'Implement common data structures from scratch',
+                        tags: ['data-structures', 'implementation'],
+                        completed: false
+                    },
+                    {
+                        id: 4,
+                        title: 'Algorithm optimization',
+                        description: 'Optimize existing solutions for better performance',
+                        tags: ['optimization', 'performance'],
+                        completed: false
+                    }
+                ]
+            };
+
+            // Return the specific items for this task or an empty array
+            return taskItems[this.task.id] || [];
+        },
+
+        getSectionTitle() {
+            const titles = {
+                1: 'Git & GitHub Learning Plan',
+                2: 'C Lab Submission Steps',
+                3: 'Binary Systems Study Plan',
+                4: 'Linked List Fix Tasks',
+                5: 'Democracy Presentation Plan',
+                6: 'Web Project Tasks',
+                7: 'Math Assignment Steps',
+                8: 'Physics Lab Preparation',
+                9: 'French Essay Plan',
+                10: 'Programming Practice'
+            };
+            return titles[this.task.id] || 'Task Plan';
+        },
+
         goBack() {
             this.$emit('close');
         },
 
         openImageGallery() {
-            this.$emit('open-gallery', this.task);
+            this.gallery.open = true;
+            this.gallery.forItemId = this.task.id;
+        },
+
+        closeGallery() {
+            this.gallery.open = false;
+            this.gallery.forItemId = null;
+        },
+
+        selectImage(photo) {
+            // Handle both URL strings (from defaults) and photo objects (from API)
+            const imageUrl = typeof photo === 'string' ? photo : (photo?.urls?.regular || photo?.urls?.small || "");
+            TaskDataService.updateTaskImage(this.gallery.forItemId, imageUrl);
+            this.toast.success('Image mise à jour!');
+            this.closeGallery();
+        },
+
+        selectDefault(url) {
+            this.selectImage(url);
         },
 
         toggleItem(id) {
@@ -90,6 +390,7 @@ export default {
         },
 
         openAddModal() {
+            console.log('Opening add modal'); // Debug log
             this.itemModal.mode = 'create';
             this.itemModal.open = true;
             this.itemModal.form = {
@@ -188,7 +489,7 @@ export default {
         <div class="content-section">
             <div class="todo-container">
                 <div class="section-header">
-                    <h2>Study Plan</h2>
+                    <h2>{{ getSectionTitle() }}</h2>
                     <button class="add-item-btn" @click="openAddModal">
                         <svg viewBox="0 0 24 24" width="16" height="16">
                             <path d="M12 5v14m-7-7h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
@@ -295,6 +596,9 @@ export default {
                 </form>
             </div>
         </div>
+
+        <!-- UnsplashImages Modal -->
+        <UnsplashImages :open="gallery.open" @selectDefault="selectDefault" @selectImage="selectImage" @close="closeGallery" />
     </div>
 </template>
 
@@ -302,6 +606,8 @@ export default {
 .todo-detail-page {
     min-height: 100vh;
     background: #0f1525;
+    position: relative;
+    z-index: 1;
 }
 
 .header-section {
@@ -680,6 +986,8 @@ export default {
     border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
     overflow: hidden;
+    position: relative;
+    z-index: 1101;
 }
 
 .modal-head {

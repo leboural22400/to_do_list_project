@@ -55,6 +55,15 @@ const router = createRouter({
             },
         },
         {
+            path: "/task/:id",
+            name: "TaskDetail",
+            component: () => import("./pages/TaskDetail.vue"),
+            meta: {
+                title: "MyToDoList - Task Detail",
+                description: "View and manage the details of your task.",
+            },
+        },
+        {
             path: "/to-do-list",
             name: "ToDoList",
             component: toDoList,
