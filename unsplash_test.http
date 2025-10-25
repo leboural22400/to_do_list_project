@@ -5,7 +5,7 @@ GET https://api.unsplash.com/photos/random?count=50
 Authorization: Client-ID {{unsplash_key}}
 Accept-Version: v1
 
-### Unsplash API - Random Photos (fallback avec query param)
+### Unsplash API - Random Photos (fallback query param)
 GET https://api.unsplash.com/photos/random?count=4&client_id={{unsplash_key}}
 Accept-Version: v1
 

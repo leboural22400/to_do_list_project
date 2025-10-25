@@ -17,6 +17,7 @@ import About from "./pages/About.vue";
 import NotFound from "./pages/NotFound.vue";
 import Account from "./pages/Account.vue";
 import Home from "./pages/Home.vue";
+import Calendar from "./pages/Calendar.vue";
 
 // Router
 const router = createRouter({
@@ -90,6 +91,15 @@ const router = createRouter({
             meta: {
                 title: "MyToDoList - About",
                 description: "Learn more about MyToDoList and its features.",
+            },
+        },
+        {
+            path: "/calendar",
+            name: "Calendar",
+            component: Calendar,
+            meta: {
+                title: "MyToDoList - Task Calendar",
+                description: "View and manage your tasks in a beautiful calendar layout. Plan your work efficiently and stay on track.",
             },
         },
     ],

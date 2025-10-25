@@ -2,12 +2,14 @@
 // Toast notification
 import { useToast } from 'vue-toastification';
 import UnsplashImages from '../UnsplashImages/UnsplashImages.vue';
+import Calendar from '../Calendar/Calendar.vue';
 import { TaskDataService } from '../../services/taskDataService.js';
 
 export default {
     name: "TodoCards",
     components: {
-        UnsplashImages
+        UnsplashImages,
+        Calendar
     },
     setup() {
         const toast = useToast();
@@ -15,6 +17,9 @@ export default {
     },
     data() {
         return {
+            // View mode toggle
+            viewMode: 'cards', // 'cards' or 'calendar'
+            
             // Use a centralized data service
             items: TaskDataService.getAllTasks(),
             gallery: {
@@ -275,6 +280,12 @@ export default {
             this.items.splice(originalIndex + 1, 0, duplicatedTodo);
 
             this.toast.success(`Task duplicated successfully!`);
+        },
+
+        // View mode methods
+        toggleViewMode() {
+            this.viewMode = this.viewMode === 'cards' ? 'calendar' : 'cards';
+            this.toast.info(`Switched to ${this.viewMode} view`);
         }
     }
 };
@@ -283,8 +294,46 @@ export default {
 <template>
     <!-- Main Cards View -->
     <section class="page">
-        <div class="header-controls">
+        <!-- Centered Title -->
+        <div class="header-title">
             <h1 class="neon-title">MY TO-DOs</h1>
+        </div>
+
+        <!-- Controls Row -->
+        <div class="header-controls">
+            <!-- View Mode Switch -->
+            <div class="view-switch">
+                <button 
+                    class="switch-btn" 
+                    :class="{ active: viewMode === 'cards' }"
+                    @click="viewMode = 'cards'"
+                    title="Cards view"
+                >
+                    <svg viewBox="0 0 24 24" width="18" height="18">
+                        <rect x="3" y="3" width="7" height="7" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>
+                        <rect x="14" y="3" width="7" height="7" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>
+                        <rect x="3" y="14" width="7" height="7" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>
+                        <rect x="14" y="14" width="7" height="7" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>
+                    </svg>
+                    Cards
+                </button>
+                
+                <button 
+                    class="switch-btn" 
+                    :class="{ active: viewMode === 'calendar' }"
+                    @click="viewMode = 'calendar'"
+                    title="Calendar view"
+                >
+                    <svg viewBox="0 0 24 24" width="18" height="18">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"/>
+                        <line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" stroke-width="2"/>
+                        <line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" stroke-width="2"/>
+                        <line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    Calendar
+                </button>
+            </div>
+            
             <button class="create-btn" @click="openTaskModal('create')" title="Create new task">
                 <svg viewBox="0 0 24 24" width="20" height="20">
                     <path d="M12 5v14m-7-7h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
@@ -293,7 +342,8 @@ export default {
             </button>
         </div>
 
-        <div class="grid">
+        <!-- Cards View -->
+        <div v-if="viewMode === 'cards'" class="grid">
             <article v-for="item in items" :key="item.id" class="card" :aria-pressed="item.done ? 'true' : 'false'"
                 @click="openTaskDetail(item, $event)">
                 <!-- Card controls -->
@@ -381,6 +431,11 @@ export default {
                     <div class="tag">{{ item.tag }}</div>
                 </div>
             </article>
+        </div>
+
+        <!-- Calendar View -->
+        <div v-else-if="viewMode === 'calendar'" class="calendar-view">
+            <Calendar :tasks="items" />
         </div>
 
         <!-- Image Gallery Modal -->
@@ -787,32 +842,98 @@ export default {
     }
 }
 
-/* Header Controls */
-.header-controls {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 20px;
-    gap: 16px;
-    position: relative;
+/* Header Title - Centered */
+.header-title {
+    text-align: center;
+    margin-bottom: 24px;
 
     .neon-title {
         margin: 0;
     }
+}
 
-    .create-btn {
-        position: absolute;
-        right: 0;
-
-        @media (max-width: 768px) {
-            position: static;
-            margin-top: 12px;
-        }
-    }
+/* Header Controls */
+.header-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    gap: 20px;
+    position: relative;
 
     @media (max-width: 768px) {
         flex-direction: column;
         text-align: center;
+        gap: 16px;
+    }
+}
+
+/* View Mode Switch */
+.view-switch {
+    display: flex;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 4px;
+    backdrop-filter: blur(10px);
+}
+
+.switch-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: #a8b3d4;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+
+    &::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+        transform: translateX(-100%);
+        transition: transform 0.6s ease;
+    }
+
+    &:hover {
+        color: #e1f0ff;
+        background: rgba(255, 255, 255, 0.08);
+        transform: translateY(-1px);
+
+        &::before {
+            transform: translateX(100%);
+        }
+    }
+
+    &.active {
+        background: linear-gradient(135deg, rgba(0, 180, 255, 0.25), rgba(0, 140, 255, 0.2));
+        color: #4dd0ff;
+        border: 1px solid rgba(0, 180, 255, 0.3);
+        box-shadow: 
+            0 4px 12px rgba(0, 180, 255, 0.15),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+
+        &:hover {
+            background: linear-gradient(135deg, rgba(0, 180, 255, 0.35), rgba(0, 140, 255, 0.3));
+            color: #66d9ff;
+            transform: translateY(-2px);
+            box-shadow: 
+                0 6px 20px rgba(0, 180, 255, 0.25),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        }
+    }
+
+    svg {
+        flex-shrink: 0;
     }
 }
 
@@ -1341,6 +1462,56 @@ export default {
 
     &:active {
         transform: translateY(0);
+    }
+}
+
+/* Calendar View */
+.calendar-view {
+    margin-top: 20px;
+    animation: fadeInUp 0.4s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive adjustments for calendar */
+@media (max-width: 768px) {
+    .header-left {
+        align-items: center;
+        
+        .view-switch {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+    
+    .switch-btn {
+        flex: 1;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .view-switch {
+        padding: 3px;
+    }
+    
+    .switch-btn {
+        padding: 6px 12px;
+        font-size: 13px;
+        
+        svg {
+            width: 16px;
+            height: 16px;
+        }
     }
 }
 </style>

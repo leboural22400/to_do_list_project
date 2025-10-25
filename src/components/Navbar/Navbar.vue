@@ -158,6 +158,15 @@ onBeforeUnmount(() => {
             </li>
 
             <li>
+                <RouterLink to="/calendar" custom v-slot="{ href, navigate, isActive }">
+                    <a :href="href" class="navlink" :class="{ 'current-link': isActive }"
+                        @click.prevent="navigate(); closeSideBar()">
+                        Calendar
+                    </a>
+                </RouterLink>
+            </li>
+
+            <li>
                 <RouterLink to="/account" custom v-slot="{ href, navigate, isActive }">
                     <a :href="href" class="navlink" :class="{ 'current-link': isActive }"
                         @click.prevent="navigate(); closeSideBar()">

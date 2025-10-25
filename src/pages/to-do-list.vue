@@ -1,6 +1,6 @@
+<!-- Old system for the To Do List -->
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import ToDo from "@/components/to-do-list/to-do.vue";
 import TaskService from "../services/taskService"
 
 // Dans votre composant

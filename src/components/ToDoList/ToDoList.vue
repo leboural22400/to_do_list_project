@@ -58,6 +58,14 @@ export default {
             return Math.round((this.completedCount / this.todoItems.length) * 100);
         }
     },
+    // Update the DOM event listener for Escape key
+    mounted() {
+        document.addEventListener('keydown', this.handleKeydown);
+    },
+
+    beforeUnmount() {
+        document.removeEventListener('keydown', this.handleKeydown);
+    },
     methods: {
         getTaskSpecificItems() {
             // Return different sub-items based on the task
@@ -448,7 +456,13 @@ export default {
             if (index > -1) {
                 this.todoItems.splice(index, 1);
             }
-        }
+        },
+
+        handleKeydown(event) {
+            if (event.key === 'Escape' && this.itemModal.open) {
+                this.closeItemModal();
+            }
+        },
     }
 };
 </script>
