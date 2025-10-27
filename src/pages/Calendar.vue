@@ -27,8 +27,6 @@ export default {
     },
     mounted() {
         this.loadTasks();
-        // Set page title
-        document.title = 'Calendar - To-Do App';
     },
     methods: {
         loadTasks() {
@@ -221,7 +219,11 @@ export default {
     padding: 20px 0;
     position: sticky;
     top: 0;
-    z-index: 2;
+    z-index: 100;
+
+    @media (max-width: 768px) {
+        z-index: 0; // Otherwise it will overlap with the navbar
+    }
 }
 
 .header-content {

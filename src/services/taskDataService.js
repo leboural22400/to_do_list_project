@@ -1,14 +1,14 @@
 // This service manages the task data for the to-do list application.
 import { reactive } from 'vue';
+import { getDateString, getWeekdayDate } from '../utils/dateUtils.js';
 
-// Reactive state to hold task data
 const taskData = reactive({
     tasks: [
         { 
             id: 1, 
             title: "Use Git and GitHub", 
             tag: "Version Control", 
-            due: "Fri", 
+            due: getWeekdayDate('Fri'), 
             priority: "medium", 
             done: false, 
             imageUrl: "https://images.unsplash.com/photo-1618401479427-c8ef9465fbe1?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1443", 
@@ -18,7 +18,7 @@ const taskData = reactive({
             id: 2, 
             title: "Submit C Lab", 
             tag: "EFREI", 
-            due: "Tomorrow", 
+            due: getDateString(1), // Tomorrow
             priority: "high", 
             done: false, 
             imageUrl: "", 
@@ -28,7 +28,7 @@ const taskData = reactive({
             id: 3, 
             title: "Review binary systems", 
             tag: "Digital Systems", 
-            due: "Fri", 
+            due: getWeekdayDate('Fri'), 
             priority: "medium", 
             done: false, 
             imageUrl: "", 
@@ -38,7 +38,7 @@ const taskData = reactive({
             id: 4, 
             title: "Fix linked list", 
             tag: "C Project", 
-            due: "Today", 
+            due: getDateString(0), // Today
             priority: "high", 
             done: true, 
             imageUrl: "", 
@@ -48,7 +48,7 @@ const taskData = reactive({
             id: 5, 
             title: "Prepare democracy slides", 
             tag: "Humanities", 
-            due: "Mon", 
+            due: getWeekdayDate('Mon'), 
             priority: "low", 
             done: false, 
             imageUrl: "", 
@@ -58,7 +58,7 @@ const taskData = reactive({
             id: 6, 
             title: "Probability exercises", 
             tag: "Maths", 
-            due: "Wed", 
+            due: getWeekdayDate('Wed'), 
             priority: "medium", 
             done: false, 
             imageUrl: "", 
@@ -68,7 +68,7 @@ const taskData = reactive({
             id: 7, 
             title: "Dockerize mini-app", 
             tag: "Tooling", 
-            due: "Tue", 
+            due: getWeekdayDate('Tue'), 
             priority: "high", 
             done: false, 
             imageUrl: "", 
@@ -78,7 +78,7 @@ const taskData = reactive({
             id: 8, 
             title: "Read about REST APIs", 
             tag: "Web", 
-            due: "Next week", 
+            due: getDateString(7), // Next week
             priority: "low", 
             done: false, 
             imageUrl: "", 
@@ -88,7 +88,7 @@ const taskData = reactive({
             id: 9, 
             title: "Review algorithms", 
             tag: "Computer Science", 
-            due: "Next week", 
+            due: getDateString(8), // Next week
             priority: "medium", 
             done: false, 
             imageUrl: "", 
@@ -98,7 +98,7 @@ const taskData = reactive({
             id: 10, 
             title: "Practice coding problems", 
             tag: "Programming", 
-            due: "Tomorrow", 
+            due: getDateString(1), // Tomorrow
             priority: "high", 
             done: false, 
             imageUrl: "", 
@@ -158,12 +158,12 @@ export const TaskDataService = {
     },
 
     // Add a new task
-    addTask(taskData) {
+    addTask(newTaskData) {
         const maxId = Math.max(...taskData.tasks.map(task => task.id));
         const newTask = {
             id: maxId + 1,
             imagePosition: { x: 50, y: 50 },
-            ...taskData
+            ...newTaskData
         };
         taskData.tasks.push(newTask);
         return newTask;

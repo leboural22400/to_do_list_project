@@ -1,5 +1,6 @@
 <script>
 import { TaskDataService } from '../../services/taskDataService.js';
+import { useToast } from 'vue-toastification';
 
 export default {
     name: 'Calendar',
@@ -12,6 +13,10 @@ export default {
             type: String,
             default: 'month' // 'month', 'week'
         }
+    },
+    setup() {
+        const toast = useToast();
+        return { toast };
     },
     data() {
         return {
@@ -28,6 +33,21 @@ export default {
                 open: false,
                 date: null,
                 tasks: []
+            },
+            addTaskModal: {
+                open: false,
+                mode: 'create', // 'create' or 'update'
+                date: null,
+                editingTask: null,
+                form: {
+                    title: '',
+                    tag: '',
+                    priority: 'medium'
+                }
+            },
+            deleteModal: {
+                open: false,
+                taskToDelete: null
             }
         };
     },
@@ -111,16 +131,81 @@ export default {
         },
         
         getTasksForDate(date) {
-            // Mock data - in real app, this would filter tasks by due date
-            const dateStr = date.toDateString();
-            const mockTasks = this.calendarTasks.filter(task => {
-                // Simple mock: assign tasks to dates based on ID
-                const taskDate = new Date();
-                taskDate.setDate(taskDate.getDate() + (task.id % 30) - 15);
-                return taskDate.toDateString() === dateStr;
-            });
+            // Filter tasks by their due date
+            const targetDateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
             
-            return mockTasks;
+            return this.calendarTasks.filter(task => {
+                if (!task.due) return false;
+                
+                // If task.due is already in YYYY-MM-DD format, compare directly
+                if (task.due.includes('-')) {
+                    return task.due === targetDateStr;
+                }
+                
+                // For legacy string dates, convert them
+                const taskDate = this.parseLegacyDate(task.due);
+                if (taskDate) {
+                    return taskDate.toISOString().split('T')[0] === targetDateStr;
+                }
+                
+                return false;
+            });
+        },
+        
+        parseLegacyDate(dueDateStr) {
+            // Helper method to parse legacy date strings like "Today", "Tomorrow", etc.
+            const today = new Date();
+            
+            switch (dueDateStr.toLowerCase()) {
+                case 'today':
+                    return new Date(today);
+                case 'tomorrow':
+                    const tomorrow = new Date(today);
+                    tomorrow.setDate(today.getDate() + 1);
+                    return tomorrow;
+                case 'mon':
+                case 'monday':
+                    return this.getNextWeekday(1); // Monday
+                case 'tue':
+                case 'tuesday':
+                    return this.getNextWeekday(2); // Tuesday
+                case 'wed':
+                case 'wednesday':
+                    return this.getNextWeekday(3); // Wednesday
+                case 'thu':
+                case 'thursday':
+                    return this.getNextWeekday(4); // Thursday
+                case 'fri':
+                case 'friday':
+                    return this.getNextWeekday(5); // Friday
+                case 'sat':
+                case 'saturday':
+                    return this.getNextWeekday(6); // Saturday
+                case 'sun':
+                case 'sunday':
+                    return this.getNextWeekday(0); // Sunday
+                case 'next week':
+                    const nextWeek = new Date(today);
+                    nextWeek.setDate(today.getDate() + 7);
+                    return nextWeek;
+                default:
+                    return null;
+            }
+        },
+        
+        getNextWeekday(targetDay) {
+            // Get the next occurrence of a specific weekday
+            const today = new Date();
+            const todayDay = today.getDay();
+            let daysUntilTarget = targetDay - todayDay;
+            
+            if (daysUntilTarget <= 0) {
+                daysUntilTarget += 7; // Next week if day has passed
+            }
+            
+            const targetDate = new Date(today);
+            targetDate.setDate(today.getDate() + daysUntilTarget);
+            return targetDate;
         },
         
         navigateMonth(direction) {
@@ -153,6 +238,134 @@ export default {
             this.taskModal.tasks = [];
         },
         
+        openAddTaskModal(date) {
+            this.addTaskModal.mode = 'create';
+            this.addTaskModal.date = date;
+            this.addTaskModal.editingTask = null;
+            this.addTaskModal.form = {
+                title: '',
+                tag: '',
+                priority: 'medium'
+            };
+            this.addTaskModal.open = true;
+        },
+
+        updateTask(task) {
+            this.addTaskModal.mode = 'update';
+            this.addTaskModal.date = new Date(task.due + 'T00:00:00');
+            this.addTaskModal.editingTask = task;
+            this.addTaskModal.form = {
+                title: task.title,
+                tag: task.tag,
+                priority: task.priority
+            };
+            this.addTaskModal.open = true;
+        },
+        
+        closeAddTaskModal() {
+            this.addTaskModal.open = false;
+            this.addTaskModal.mode = 'create';
+            this.addTaskModal.date = null;
+            this.addTaskModal.editingTask = null;
+            this.addTaskModal.form = {
+                title: '',
+                tag: '',
+                priority: 'medium'
+            };
+        },
+        
+        addNewTask() {
+            if (!this.addTaskModal.form.title.trim()) {
+                alert('Please enter a task title');
+                return;
+            }
+            
+            if (this.addTaskModal.mode === 'update') {
+                // Update existing task
+                const updates = {
+                    title: this.addTaskModal.form.title.trim(),
+                    tag: this.addTaskModal.form.tag.trim() || 'General',
+                    priority: this.addTaskModal.form.priority,
+                    due: this.addTaskModal.date.toISOString().split('T')[0]
+                };
+                
+                TaskDataService.updateTask(this.addTaskModal.editingTask.id, updates);
+                this.toast.success(`Task "${updates.title}" updated successfully!`);
+            } else {
+                // Create new task
+                const newTask = {
+                    title: this.addTaskModal.form.title.trim(),
+                    tag: this.addTaskModal.form.tag.trim() || 'General',
+                    priority: this.addTaskModal.form.priority,
+                    due: this.addTaskModal.date.toISOString().split('T')[0],
+                    done: false,
+                    imageUrl: '',
+                    imagePosition: { x: 50, y: 50 }
+                };
+                
+                TaskDataService.addTask(newTask);
+                this.toast.success(`Task "${newTask.title}" created successfully!`);
+            }
+            
+            // Reload tasks to update the calendar
+            this.loadTasks();
+            
+            // Update the modal tasks if it's open
+            if (this.taskModal.open) {
+                this.taskModal.tasks = this.getTasksForDate(this.taskModal.date);
+            }
+            
+            // Close modal
+            this.closeAddTaskModal();
+        },
+        
+        toggleTaskStatus(task) {
+            const wasCompleted = task.done;
+            TaskDataService.toggleTaskStatus(task.id);
+            // Reload tasks to update the calendar
+            this.loadTasks();
+            
+            // Show toast notification
+            if (wasCompleted) {
+                this.toast.info(`Task "${task.title}" marked as incomplete`);
+            } else {
+                this.toast.success(`Task "${task.title}" completed!`);
+            }
+        },
+        
+        deleteTask(task) {
+            // Open confirmation modal instead of confirm()
+            this.deleteModal.open = true;
+            this.deleteModal.taskToDelete = task;
+        },
+        
+        confirmDelete() {
+            const task = this.deleteModal.taskToDelete;
+            if (!task) return;
+
+            TaskDataService.deleteTask(task.id);
+            // Reload tasks to update the calendar
+            this.loadTasks();
+            
+            // Show success message
+            this.toast.success(`Task "${task.title}" deleted successfully!`);
+            
+            // If this was the last task in the modal, close it
+            if (this.taskModal.tasks.length <= 1) {
+                this.closeTaskModal();
+            } else {
+                // Update the modal tasks
+                this.taskModal.tasks = this.getTasksForDate(this.taskModal.date);
+            }
+            
+            this.closeDeleteModal();
+        },
+
+        closeDeleteModal() {
+            this.deleteModal.open = false;
+            this.deleteModal.taskToDelete = null;
+        },
+        
         getPriorityColor(priority) {
             const colors = {
                 high: '#ff5656',
@@ -169,6 +382,34 @@ export default {
                 month: 'long',
                 day: 'numeric'
             });
+        },
+        
+        formatTaskDueDate(dueDate) {
+            if (!dueDate) return 'No due date';
+            
+            // If it's already in YYYY-MM-DD format, parse and format it
+            if (dueDate.includes('-')) {
+                const date = new Date(dueDate + 'T00:00:00');
+                const today = new Date();
+                const tomorrow = new Date(today);
+                tomorrow.setDate(today.getDate() + 1);
+                
+                // Check if it's today or tomorrow for special formatting
+                if (date.toDateString() === today.toDateString()) {
+                    return 'Today';
+                } else if (date.toDateString() === tomorrow.toDateString()) {
+                    return 'Tomorrow';
+                } else {
+                    return date.toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                }
+            }
+            
+            // For legacy string dates, return as-is (though they should be converted)
+            return dueDate;
         },
         
         getTaskCountClass(count) {
@@ -268,7 +509,17 @@ export default {
                     @mouseenter="hoveredDate = dayData.date"
                     @mouseleave="hoveredDate = null"
                 >
-                    <div class="day-number">{{ dayData.day }}</div>
+                    <div class="day-header">
+                        <div class="day-number">{{ dayData.day }}</div>
+                        <button 
+                            v-if="dayData.isCurrentMonth"
+                            class="add-task-btn" 
+                            @click.stop="openAddTaskModal(dayData.date)"
+                            title="Add task"
+                        >
+                            +
+                        </button>
+                    </div>
                     
                     <!-- Task indicators -->
                     <div class="task-indicators" v-if="dayData.tasks.length > 0">
@@ -298,7 +549,7 @@ export default {
                                 class="preview-task"
                                 :class="{ done: task.done }"
                             >
-                                <div class="task-priority" :style="{ backgroundColor: getPriorityColor(task.priority) }"></div>
+                                <div class="priority-dot" :style="{ backgroundColor: getPriorityColor(task.priority) }"></div>
                                 <span class="task-title">{{ task.title }}</span>
                             </div>
                             <div v-if="dayData.tasks.length > 2" class="preview-more">
@@ -338,15 +589,135 @@ export default {
                                     <span class="priority-badge" :data-priority="task.priority">
                                         {{ task.priority }}
                                     </span>
-                                    <span class="due-date">Due: {{ task.due }}</span>
+                                    <span class="due-date">Due: {{ formatTaskDueDate(task.due) }}</span>
                                 </div>
                             </div>
-                            <div class="task-status" :class="{ done: task.done }">
-                                <svg v-if="task.done" viewBox="0 0 24 24" width="16" height="16">
-                                    <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                                </svg>
+                            <div class="task-actions">
+                                <button 
+                                    class="task-action-btn toggle-btn" 
+                                    @click="toggleTaskStatus(task)"
+                                    :title="task.done ? 'Mark as incomplete' : 'Mark as complete'"
+                                >
+                                    <svg v-if="task.done" viewBox="0 0 24 24" width="16" height="16">
+                                        <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                                    </svg>
+                                    <svg v-else viewBox="0 0 24 24" width="16" height="16">
+                                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
+                                    </svg>
+                                </button>
+                                <button 
+                                    class="task-action-btn update-btn" 
+                                    @click="updateTask(task)"
+                                    title="Update task"
+                                >
+                                    <svg viewBox="0 0 24 24" width="16" height="16">
+                                        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" stroke-width="2" fill="none"/>
+                                        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" fill="none"/>
+                                    </svg>
+                                </button>
+                                <button 
+                                    class="task-action-btn delete-btn" 
+                                    @click="deleteTask(task)"
+                                    title="Delete task"
+                                >
+                                    <svg viewBox="0 0 24 24" width="16" height="16">
+                                        <path d="M3 6h18m-2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" stroke="currentColor" stroke-width="2" fill="none"/>
+                                    </svg>
+                                </button>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Task Modal -->
+        <div v-if="addTaskModal.open" class="modal-backdrop" @click.self="closeAddTaskModal">
+            <div class="add-task-modal">
+                <header class="modal-head">
+                    <h2>{{ addTaskModal.mode === 'update' ? 'Update Task for' : 'Add Task for' }} {{ formatDate(addTaskModal.date) }}</h2>
+                    <button class="close" @click="closeAddTaskModal" aria-label="Close modal">
+                        ✕
+                    </button>
+                </header>
+                
+                <form @submit.prevent="addNewTask" class="task-form">
+                    <div class="form-group">
+                        <label for="taskTitle">Task Title *</label>
+                        <input id="taskTitle" type="text" v-model="addTaskModal.form.title"
+                            placeholder="Enter task title..." required autofocus>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="taskTag">Category</label>
+                            <input id="taskTag" type="text" v-model="addTaskModal.form.tag"
+                                placeholder="e.g., Work, School, Personal">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="taskDue">Due Date</label>
+                            <input id="taskDue" type="text" value="Selected date" readonly
+                                :placeholder="formatDate(addTaskModal.date)">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="taskPriority">Priority</label>
+                        <select id="taskPriority" v-model="addTaskModal.form.priority">
+                            <option value="low">🟢 Low Priority</option>
+                            <option value="medium">🟡 Medium Priority</option>
+                            <option value="high">🔴 High Priority</option>
+                        </select>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" @click="closeAddTaskModal">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn-add">
+                            {{ addTaskModal.mode === 'update' ? 'Update Task' : 'Create Task' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Delete Confirmation Modal -->
+        <div v-if="deleteModal.open" class="modal-backdrop" @click.self="closeDeleteModal">
+            <div class="delete-modal">
+                <header class="modal-head danger">
+                    <h2><i class="fa-solid fa-trash-arrow-up"></i> Delete Task</h2>
+                    <button class="close" @click="closeDeleteModal" aria-label="Close modal">
+                        ✕
+                    </button>
+                </header>
+
+                <div class="delete-content">
+                    <div class="delete-warning">
+                        <div class="warning-icon"><i class="fa-solid fa-circle-xmark"></i></div>
+                        <h3>Are you sure?</h3>
+                        <p>You are about to permanently delete:</p>
+                        <div class="task-preview">
+                            <div class="task-title">{{ deleteModal.taskToDelete?.title }}</div>
+                            <div class="task-info">
+                                <span class="task-tag">{{ deleteModal.taskToDelete?.tag }}</span>
+                                <span class="task-due">Due: {{ formatTaskDueDate(deleteModal.taskToDelete?.due) }}</span>
+                                <span class="priority-chip" :data-priority="deleteModal.taskToDelete?.priority">
+                                    {{ deleteModal.taskToDelete?.priority }}
+                                </span>
+                            </div>
+                        </div>
+                        <p class="warning-text">This action cannot be undone.</p>
+                    </div>
+                    
+                    <div class="delete-actions">
+                        <button type="button" class="btn-cancel" @click="closeDeleteModal">
+                            Cancel
+                        </button>
+                        <button type="button" class="btn-delete" @click="confirmDelete">
+                            Delete Task
+                        </button>
                     </div>
                 </div>
             </div>
@@ -561,11 +932,44 @@ export default {
     }
 }
 
+.day-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
 .day-number {
     font-size: 16px;
     font-weight: 600;
     color: #e9edf8;
-    margin-bottom: 8px;
+}
+
+.add-task-btn {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 180, 255, 0.1);
+    color: #00b4ff;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: all 0.2s ease;
+
+    &:hover {
+        background: rgba(0, 180, 255, 0.2);
+        border-color: rgba(0, 180, 255, 0.4);
+        transform: scale(1.1);
+    }
+}
+
+.calendar-day:hover .add-task-btn {
+    opacity: 1;
 }
 
 .task-indicators {
@@ -653,7 +1057,7 @@ export default {
     }
 }
 
-.task-priority {
+.priority-dot {
     width: 8px;
     height: 8px;
     border-radius: 50%;
@@ -822,23 +1226,28 @@ export default {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    outline: none !important;
+    box-shadow: none !important;
 
     &[data-priority="high"] {
-        background: rgba(255, 86, 86, 0.2);
-        color: #ffd5d5;
-        border: 1px solid rgba(255, 86, 86, 0.3);
+        background: rgba(255, 86, 86, 0.2) !important;
+        color: #ffd5d5 !important;
+        border: 1px solid rgba(255, 86, 86, 0.3) !important;
+        outline: none !important;
     }
 
     &[data-priority="medium"] {
-        background: rgba(255, 195, 0, 0.2);
-        color: #ffeec2;
-        border: 1px solid rgba(255, 195, 0, 0.3);
+        background: rgba(255, 195, 0, 0.2) !important;
+        color: #ffeec2 !important;
+        border: 1px solid rgba(255, 195, 0, 0.3) !important;
+        outline: none !important;
     }
 
     &[data-priority="low"] {
-        background: rgba(0, 255, 170, 0.2);
-        color: #d2ffe9;
-        border: 1px solid rgba(0, 255, 170, 0.3);
+        background: rgba(0, 255, 170, 0.2) !important;
+        color: #d2ffe9 !important;
+        border: 1px solid rgba(0, 255, 170, 0.3) !important;
+        outline: none !important;
     }
 }
 
@@ -847,20 +1256,55 @@ export default {
     color: #a8b3d4;
 }
 
-.task-status {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.2);
+.task-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.task-action-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.05);
+    color: #e9edf8;
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
+    transition: all 0.2s ease;
 
-    &.done {
-        background: #00ff88;
-        border-color: #00ff88;
-        color: white;
+    &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    &.toggle-btn {
+        &:hover {
+            background: rgba(0, 255, 136, 0.15);
+            border-color: rgba(0, 255, 136, 0.3);
+            color: #00ff88;
+        }
+
+        &.completed {
+            background: #00ff88;
+            border-color: #00ff88;
+            color: white;
+        }
+    }
+
+    &.update-btn:hover {
+        background: rgba(0, 180, 255, 0.15);
+        border-color: rgba(0, 180, 255, 0.3);
+        color: #00b4ff;
+    }
+
+    &.delete-btn:hover {
+        background: rgba(255, 86, 86, 0.15);
+        border-color: rgba(255, 86, 86, 0.3);
+        color: #ff5656;
     }
 }
 
@@ -917,6 +1361,470 @@ export default {
     .task-dot {
         width: 4px;
         height: 4px;
+    }
+}
+
+/* Add Task Modal Styles */
+.add-task-modal {
+    width: min(520px, 95vw);
+    max-height: min(80vh, 700px);
+    background: linear-gradient(145deg, #14192b, #16213a);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, .12);
+    box-shadow: 
+        0 25px 80px rgba(0, 0, 0, .7),
+        0 0 0 1px rgba(0, 180, 255, .08),
+        inset 0 1px 0 rgba(255, 255, 255, .1);
+    overflow: hidden;
+    animation: slideInModal 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+}
+
+@keyframes slideInModal {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, #1e2750, #1a2447);
+    border-bottom: 1px solid rgba(0, 180, 255, 0.15);
+    position: relative;
+
+    &::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(0, 180, 255, 0.3), transparent);
+    }
+
+    h2 {
+        margin: 0;
+        font-size: 20px;
+        color: #e1f0ff;
+        font-weight: 700;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .close {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: #e1f0ff;
+        font-size: 18px;
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+
+        &:hover {
+            background: rgba(255, 86, 86, 0.15);
+            border-color: rgba(255, 86, 86, 0.3);
+            color: #ff9999;
+            transform: translateY(-1px);
+        }
+
+        &:active {
+            transform: translateY(0);
+        }
+    }
+}
+
+.task-form {
+    padding: 24px 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-height: calc(80vh - 160px);
+    overflow-y: auto;
+
+    /* Custom scrollbar */
+    &::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 3px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: rgba(0, 180, 255, 0.3);
+        border-radius: 3px;
+
+        &:hover {
+            background: rgba(0, 180, 255, 0.5);
+        }
+    }
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+
+    @media (max-width: 480px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.form-group label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #b8d4ff;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    &::before {
+        content: "";
+        width: 3px;
+        height: 3px;
+        background: rgba(0, 180, 255, 0.6);
+        border-radius: 50%;
+    }
+}
+
+.form-group input,
+.form-group select {
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, .15);
+    background: linear-gradient(145deg, #0d1420, #111929);
+    color: #f0f5ff;
+    font-size: 15px;
+    font-weight: 500;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+
+    &:focus {
+        outline: none;
+        border-color: rgba(0, 180, 255, 0.6);
+        box-shadow: 
+            0 0 0 3px rgba(0, 180, 255, 0.15),
+            inset 0 1px 3px rgba(0, 0, 0, 0.2),
+            0 4px 12px rgba(0, 180, 255, 0.1);
+        background: linear-gradient(145deg, #0f1525, #141d2e);
+        transform: translateY(-1px);
+    }
+
+    &::placeholder {
+        color: #8494b8;
+        opacity: 0.9;
+        font-weight: 400;
+    }
+
+    &:hover:not(:focus) {
+        border-color: rgba(255, 255, 255, .2);
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+}
+
+.form-group select {
+    cursor: pointer;
+    
+    option {
+        background: #1a2035;
+        color: #f0f5ff;
+        padding: 8px 12px;
+        
+        &[value="high"] {
+            background: rgba(255, 86, 86, 0.1);
+            color: #ffd5d5;
+        }
+        
+        &[value="medium"] {
+            background: rgba(255, 200, 0, 0.1);
+            color: #ffeec2;
+        }
+        
+        &[value="low"] {
+            background: rgba(0, 255, 136, 0.1);
+            color: #d2ffe9;
+        }
+    }
+}
+
+.form-actions {
+    display: flex;
+    gap: 14px;
+    margin-top: 12px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(0, 180, 255, 0.12);
+    position: relative;
+
+    &::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60px;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(0, 180, 255, 0.4), transparent);
+    }
+}
+
+.btn-cancel,
+.btn-add {
+    flex: 1;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(255, 255, 255, .15);
+    position: relative;
+    overflow: hidden;
+
+    &::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+        transform: translateX(-100%);
+        transition: transform 0.6s ease;
+    }
+
+    &:hover::before {
+        transform: translateX(100%);
+    }
+}
+
+.btn-cancel {
+    background: rgba(255, 255, 255, 0.06);
+    color: #d5e4ff;
+    border-color: rgba(255, 255, 255, 0.2);
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.12);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    &:active {
+        transform: translateY(-1px);
+    }
+}
+
+.btn-add {
+    background: linear-gradient(135deg, rgba(0, 180, 255, 0.25), rgba(0, 140, 255, 0.2));
+    border-color: rgba(0, 180, 255, 0.4);
+    color: #4dd0ff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    position: relative;
+
+    &:hover {
+        background: linear-gradient(135deg, rgba(0, 180, 255, 0.4), rgba(0, 140, 255, 0.3));
+        transform: translateY(-2px);
+        box-shadow: 
+            0 8px 25px rgba(0, 180, 255, 0.25),
+            0 0 20px rgba(0, 180, 255, 0.15);
+        border-color: rgba(0, 180, 255, 0.6);
+        color: #66d9ff;
+    }
+
+    &:active {
+        transform: translateY(-1px);
+    }
+
+    &:focus {
+        outline: none;
+        box-shadow: 
+            0 0 0 3px rgba(0, 180, 255, 0.3),
+            0 8px 25px rgba(0, 180, 255, 0.25);
+    }
+}
+
+/* Delete Modal Styles */
+.delete-modal {
+    width: min(450px, 90vw);
+    background: #14192b;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 86, 86, 0.2);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .6);
+    overflow: hidden;
+    animation: slideInModal 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modal-head.danger {
+    background: linear-gradient(135deg, rgba(255, 86, 86, 0.15), rgba(200, 60, 60, 0.1));
+    border-bottom: 1px solid rgba(255, 86, 86, 0.2);
+
+    &::after {
+        background: linear-gradient(90deg, transparent, rgba(255, 86, 86, 0.3), transparent);
+    }
+
+    h2 {
+        color: #ff9999;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 18px;
+    }
+}
+
+.delete-content {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.delete-warning {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.warning-icon {
+    font-size: 48px;
+    margin-bottom: 8px;
+}
+
+.delete-warning h3 {
+    color: #ff9999;
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.delete-warning p {
+    color: #c8d4ff;
+    margin: 0;
+    font-size: 14px;
+}
+
+.warning-text {
+    color: #ff9999 !important;
+    font-weight: 600;
+    font-size: 13px !important;
+}
+
+.task-preview {
+    background: rgba(255, 86, 86, 0.05);
+    border: 1px solid rgba(255, 86, 86, 0.2);
+    border-radius: 10px;
+    padding: 16px;
+    margin: 8px 0;
+}
+
+.task-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #eef3ff;
+    margin-bottom: 8px;
+}
+
+.task-info {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+    font-size: 12px;
+}
+
+.task-tag,
+.task-due {
+    color: #98a3d4;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 8px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.priority-chip {
+    padding: 2px 8px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    font-weight: 600;
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    line-height: 1.2;
+    box-sizing: border-box;
+    border: 1px solid transparent;
+
+    &[data-priority="high"] {
+        background: rgba(255, 86, 86, 0.2);
+        color: #ffd5d5;
+        border-color: rgba(255, 86, 86, 0.3);
+    }
+
+    &[data-priority="medium"] {
+        background: rgba(255, 195, 0, 0.2);
+        color: #ffeec2;
+        border-color: rgba(255, 195, 0, 0.3);
+    }
+
+    &[data-priority="low"] {
+        background: rgba(0, 255, 170, 0.2);
+        color: #d2ffe9;
+        border-color: rgba(0, 255, 170, 0.3);
+    }
+}
+
+
+
+
+
+.delete-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.btn-delete {
+    flex: 1;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(255, 86, 86, 0.3);
+    background: linear-gradient(135deg, rgba(255, 86, 86, 0.2), rgba(200, 60, 60, 0.15));
+    color: #ff9999;
+
+    &:hover {
+        background: linear-gradient(135deg, rgba(255, 86, 86, 0.3), rgba(200, 60, 60, 0.2));
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(255, 86, 86, 0.3);
+    }
+
+    &:active {
+        transform: translateY(0);
     }
 }
 </style>
