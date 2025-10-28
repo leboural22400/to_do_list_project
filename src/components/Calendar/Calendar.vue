@@ -124,6 +124,11 @@ export default {
         loadTasks() {
             this.calendarTasks = TaskDataService.getAllTasks();
         },
+
+        openTaskDetail(task) {
+            // Emit event to parent component to handle navigation
+            this.$emit('open-task-detail', task);
+        },
         
         isToday(date) {
             const today = new Date();
@@ -529,6 +534,7 @@ export default {
                             class="task-dot"
                             :style="{ backgroundColor: getPriorityColor(task.priority) }"
                             :title="task.title"
+                            @click.stop="openTaskDetail(task)"
                         ></div>
                         <div v-if="dayData.tasks.length > 3" class="more-tasks">
                             +{{ dayData.tasks.length - 3 }}
@@ -548,6 +554,7 @@ export default {
                                 :key="task.id" 
                                 class="preview-task"
                                 :class="{ done: task.done }"
+                                @click.stop="openTaskDetail(task)"
                             >
                                 <div class="priority-dot" :style="{ backgroundColor: getPriorityColor(task.priority) }"></div>
                                 <span class="task-title">{{ task.title }}</span>
@@ -582,7 +589,7 @@ export default {
                             :class="{ completed: task.done }"
                         >
                             <div class="task-priority-bar" :style="{ backgroundColor: getPriorityColor(task.priority) }"></div>
-                            <div class="task-content">
+                            <div class="task-content" @click="openTaskDetail(task)">
                                 <h4 class="task-title">{{ task.title }}</h4>
                                 <p class="task-category">{{ task.tag }}</p>
                                 <div class="task-meta">
@@ -984,6 +991,13 @@ export default {
     height: 6px;
     border-radius: 50%;
     background: #00b4ff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+        transform: scale(1.3);
+        opacity: 0.8;
+    }
 }
 
 .more-tasks {
@@ -1047,6 +1061,14 @@ export default {
     align-items: center;
     gap: 6px;
     font-size: 12px;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    
+    &:hover {
+        background: rgba(0, 180, 255, 0.1);
+    }
     
     &.done {
         opacity: 0.6;
@@ -1197,6 +1219,14 @@ export default {
 
 .task-content {
     flex: 1;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    
+    &:hover {
+        background: rgba(0, 180, 255, 0.1);
+    }
     
     .task-title {
         font-size: 16px;

@@ -12,16 +12,16 @@ const year = new Date().getFullYear();
                     <h3 class="footer__title">Product</h3>
                     <ul>
                         <li>
-                            <RouterLink to="/to-do-list-home">All tasks</RouterLink>
+                            <RouterLink to="/to-do-list">All tasks</RouterLink>
                         </li>
                         <li>
-                            <RouterLink to="/to-do-list-home?view=today">Today</RouterLink>
+                            <RouterLink to="/to-do-list?view=today">Today</RouterLink>
                         </li>
                         <li>
-                            <RouterLink to="/to-do-list-home?view=completed">Completed</RouterLink>
+                            <RouterLink to="/to-do-list?view=completed">Completed</RouterLink>
                         </li>
                         <li>
-                            <RouterLink to="/to-do-list-home?view=calendar">Calendar view</RouterLink>
+                            <RouterLink to="/to-do-list?view=calendar">Calendar view</RouterLink>
                         </li>
                     </ul>
                 </section>

@@ -231,7 +231,30 @@ export default {
         },
 
         goBack() {
-            this.$router.push('/to-do-list-home');
+            // Check if we have context from where the user came
+            const fromContext = this.$route.query.from;
+            
+            if (fromContext === 'calendar') {
+                // Navigate back to todo list with calendar mode
+                this.$router.push({
+                    path: '/to-do-list',
+                    query: { view: 'calendar' }
+                });
+            } else if (fromContext === 'cards') {
+                // Navigate back to todo list with cards mode
+                this.$router.push({
+                    path: '/to-do-list',
+                    query: { view: 'cards' }
+                });
+            } else {
+                // Fallback: try to go back in history
+                if (window.history.length > 1) {
+                    this.$router.go(-1);
+                } else {
+                    // Final fallback to todo list home
+                    this.$router.push('/to-do-list');
+                }
+            }
         },
 
         openImageGallery() {

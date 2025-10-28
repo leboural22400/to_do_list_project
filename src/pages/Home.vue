@@ -10,6 +10,7 @@ import About from './About.vue';
 
 // For the demonstration
 import { ref, computed } from 'vue';
+import AuthService from '@/services/authService.js';
 
 const props = defineProps({
     title: { type: String, default: 'MyToDoList' },
@@ -19,9 +20,9 @@ const props = defineProps({
             'MyToDoList helps you organize tasks efficiently and stay productive.'
     },
     primaryText: { type: String, default: 'Get Started' },
-    primaryPageLink: { type: String, default: ToDoListHome },
+    primaryPageLink: { type: String, default: '/to-do-list' },
     secondaryText: { type: String, default: 'Learn More' },
-    secondaryPageLink: { type: String, default: About },
+    secondaryPageLink: { type: String, default: '/about' },
     imageSrc: { type: String, default: heroImg },
     imageAlt: { type: String, default: 'To-Do List Hero Image' },
     showImage: { type: Boolean, default: true },
@@ -122,6 +123,31 @@ const items = [
     }
 ];
 
+// Authentication state
+const isAuthenticated = computed(() => AuthService.isAuthenticated.value);
+const user = computed(() => AuthService.user.value);
+
+// Dynamic content based on auth state
+const dynamicTitle = computed(() => {
+    return isAuthenticated.value && user.value 
+        ? `Welcome back, ${user.value.firstName}!` 
+        : props.title;
+});
+
+const dynamicSubtitle = computed(() => {
+    return isAuthenticated.value 
+        ? 'Ready to tackle your tasks? Let\'s get organized and stay productive!' 
+        : props.subtitle;
+});
+
+const dynamicPrimaryText = computed(() => {
+    return isAuthenticated.value ? 'Go to Tasks' : 'Get Started';
+});
+
+const dynamicPrimaryLink = computed(() => {
+    return isAuthenticated.value ? '/to-do-list' : '/account';
+});
+
 // Unique id for every task
 let uid = 0;
 
@@ -185,14 +211,14 @@ const quoteProps = {
                 </div>
 
                 <div class="typewriter">
-                    <h1 class="title">{{ props.title }}</h1>
-                    <p class="subtitle">{{ props.subtitle }}</p>
+                    <h1 class="title">{{ dynamicTitle }}</h1>
+                    <p class="subtitle">{{ dynamicSubtitle }}</p>
                 </div>
 
                 <!-- Call to action buttons (Navigation to the primary pages) -->
                 <div class="actions" role="group" aria-label="Hero actions">
-                    <RouterLink to="/to-do-list-home" custom v-slot="{ href, navigate }">
-                        <a class="btn btn--primary" :href="href" @click.prevent="navigate()">{{ props.primaryText }}</a>
+                    <RouterLink :to="dynamicPrimaryLink" custom v-slot="{ href, navigate }">
+                        <a class="btn btn--primary" :href="href" @click.prevent="navigate()">{{ dynamicPrimaryText }}</a>
                     </RouterLink>
                     <RouterLink to="/about" custom v-slot="{ href, navigate }">
                         <a class="btn btn--ghost" :href="href" @click.prevent="navigate()">{{ props.secondaryText }}</a>

@@ -4,6 +4,7 @@ import { useToast } from 'vue-toastification';
 import UnsplashImages from '../UnsplashImages/UnsplashImages.vue';
 import Calendar from '../Calendar/Calendar.vue';
 import { TaskDataService } from '../../services/taskDataService.js';
+import { parseAndValidateDate, dateToISOString } from '../../utils/dateUtils.js';
 
 export default {
     name: "TodoCards",
@@ -45,16 +46,63 @@ export default {
             deleteModal: {
                 open: false,
                 taskToDelete: null
-            }
+            },
+
+            // Export menu
+            exportMenu: {
+                open: false
+            },
+
+            // Date help visibility
+            showDateHelp: false
         };
+    },
+    created() {
+        // Check URL parameters to set initial view mode
+        const viewParam = this.$route.query.view;
+        if (viewParam === 'calendar' || viewParam === 'cards') {
+            this.viewMode = viewParam;
+        }
+    },
+    computed: {
+        completedTasks() {
+            return this.items.filter(task => task.done).length;
+        },
+        pendingTasks() {
+            return this.items.filter(task => !task.done).length;
+        },
+        highPriorityTasks() {
+            return this.items.filter(task => task.priority === 'high').length;
+        },
+        mediumPriorityTasks() {
+            return this.items.filter(task => task.priority === 'medium').length;
+        },
+        lowPriorityTasks() {
+            return this.items.filter(task => task.priority === 'low').length;
+        },
+        tasksWithDueDate() {
+            return this.items.filter(task => task.due && task.due.trim()).length;
+        },
+        overdueTasks() {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            return this.items.filter(task => {
+                if (!task.due || task.done) return false;
+                const dueDate = new Date(task.due);
+                return dueDate < today;
+            }).length;
+        }
     },
     mounted() {
         // Add the listener for the ESC key
         document.addEventListener('keydown', this.handleKeydown);
+        // Add click outside listener for export menu
+        document.addEventListener('click', this.handleClickOutside);
     },
     beforeUnmount() {
         // Clean up the listener when the component is destroyed
         document.removeEventListener('keydown', this.handleKeydown);
+        document.removeEventListener('click', this.handleClickOutside);
     },
     methods: {
         toggle(id) {
@@ -180,6 +228,24 @@ export default {
                 return;
             }
 
+            // Validate date if provided
+            if (form.due.trim()) {
+                console.log('🔍 Validating date input:', form.due);
+                const dateValidation = parseAndValidateDate(form.due);
+                console.log('🔍 Validation result:', dateValidation);
+                
+                if (!dateValidation.isValid) {
+                    console.error('❌ Date validation failed:', dateValidation.error);
+                    this.toast.error(dateValidation.error);
+                    return;
+                }
+                
+                // Convert to ISO format for storage
+                const originalDue = form.due;
+                form.due = dateToISOString(dateValidation.date);
+                console.log('✅ Date converted from', originalDue, 'to', form.due);
+            }
+
             if (this.taskModal.mode === 'create') {
                 this.createTask(form);
             } else if (this.taskModal.mode === 'edit') {
@@ -190,34 +256,32 @@ export default {
         },
 
         createTask(form) {
-            // Generate new ID
-            const maxId = Math.max(...this.items.map(item => item.id));
-            const newId = maxId + 1;
-
             const newTodo = {
-                id: newId,
                 title: form.title.trim(),
                 tag: form.tag.trim() || 'General',
-                due: form.due.trim() || 'TBD',
+                due: form.due || 'TBD', // form.due is already processed by validation
                 priority: form.priority,
                 done: false,
                 imageUrl: "",
                 imagePosition: { x: 50, y: 50 }
             };
 
-            this.items.push(newTodo);
+            // Use TaskDataService to add the task (includes localStorage save)
+            TaskDataService.addTask(newTodo);
             this.toast.success(`Task "${form.title}" created successfully!`);
         },
 
         updateTask(form) {
-            const item = this.items.find(i => i.id === this.taskModal.editingId);
-            if (item) {
-                item.title = form.title.trim();
-                item.tag = form.tag.trim() || 'General';
-                item.due = form.due.trim() || 'TBD';
-                item.priority = form.priority;
-                this.toast.success('Task updated successfully!');
-            }
+            const updates = {
+                title: form.title.trim(),
+                tag: form.tag.trim() || 'General',
+                due: form.due || 'TBD', // form.due is already processed by validation
+                priority: form.priority
+            };
+            
+            // Use TaskDataService to update the task (includes localStorage save)
+            TaskDataService.updateTask(this.taskModal.editingId, updates);
+            this.toast.success('Task updated successfully!');
         },
 
         deleteTodo(item, event) {
@@ -232,11 +296,9 @@ export default {
             const item = this.deleteModal.taskToDelete;
             if (!item) return;
 
-            const index = this.items.findIndex(i => i.id === item.id);
-            if (index !== -1) {
-                this.items.splice(index, 1);
-                this.toast.success(`Task "${item.title}" deleted successfully!`);
-            }
+            // Use TaskDataService to delete the task (includes localStorage save)
+            TaskDataService.deleteTask(item.id);
+            this.toast.success(`Task "${item.title}" deleted successfully!`);
 
             this.closeDeleteModal();
         },
@@ -248,7 +310,16 @@ export default {
 
         // Detail view methods
         openTaskDetail(item, event) {
-            // Prevent navigation if clicking on controls
+            // If called from calendar (no event), navigate directly with context
+            if (!event) {
+                this.$router.push({
+                    path: `/task/${item.id}`,
+                    query: { from: 'calendar' }
+                });
+                return;
+            }
+
+            // Prevent navigation if clicking on controls (only for card view)
             if (event.target.closest('.card-control') ||
                 event.target.closest('.check') ||
                 event.target.closest('.image-controls') ||
@@ -261,24 +332,57 @@ export default {
                 return;
             }
 
-            // Navigate to task detail route
-            this.$router.push(`/task/${item.id}`);
+            // Navigate to task detail route with context
+            this.$router.push({
+                path: `/task/${item.id}`,
+                query: { from: 'cards' }
+            });
         },
 
         duplicateTodo(item, event) {
             event.stopPropagation();
 
-            const maxId = Math.max(...this.items.map(i => i.id));
+            // Generate a smart duplicate title
+            let duplicateTitle = item.title;
+            const existingTitles = this.items.map(task => task.title);
+            
+            // Check if title already has a number suffix
+            const numberMatch = duplicateTitle.match(/^(.+?) (\d+)$/);
+            if (numberMatch) {
+                // Title already has a number, increment it
+                const baseTitle = numberMatch[1];
+                let nextNumber = parseInt(numberMatch[2]) + 1;
+                duplicateTitle = `${baseTitle} ${nextNumber}`;
+                
+                // Make sure this new title doesn't exist
+                while (existingTitles.includes(duplicateTitle)) {
+                    nextNumber++;
+                    duplicateTitle = `${baseTitle} ${nextNumber}`;
+                }
+            } else {
+                // Add number suffix starting with 2
+                let counter = 2;
+                let candidateTitle = `${duplicateTitle} ${counter}`;
+                
+                while (existingTitles.includes(candidateTitle)) {
+                    counter++;
+                    candidateTitle = `${duplicateTitle} ${counter}`;
+                }
+                duplicateTitle = candidateTitle;
+            }
+
+            // Use TaskDataService to add the new task
             const duplicatedTodo = {
-                ...item,
-                id: maxId + 1,
-                title: `${item.title} (Copy)`,
-                done: false
+                title: duplicateTitle,
+                tag: item.tag,
+                due: item.due,
+                priority: item.priority,
+                done: false,
+                imageUrl: item.imageUrl,
+                imagePosition: item.imagePosition
             };
 
-            const originalIndex = this.items.findIndex(i => i.id === item.id);
-            this.items.splice(originalIndex + 1, 0, duplicatedTodo);
-
+            TaskDataService.addTask(duplicatedTodo);
             this.toast.success(`Task duplicated successfully!`);
         },
 
@@ -286,6 +390,102 @@ export default {
         toggleViewMode() {
             this.viewMode = this.viewMode === 'cards' ? 'calendar' : 'cards';
             this.toast.info(`Switched to ${this.viewMode} view`);
+        },
+
+        // Date format examples
+        formatExample(type) {
+            const today = new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(today.getDate() + 1);
+            const nextWeek = new Date(today);
+            nextWeek.setDate(today.getDate() + 7);
+
+            const formatDate = (date) => {
+                return date.toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    month: 'short', 
+                    day: 'numeric'
+                });
+            };
+
+            switch(type) {
+                case 'today':
+                    return formatDate(today);
+                case 'tomorrow':
+                    return formatDate(tomorrow);
+                case 'nextweek':
+                    return formatDate(nextWeek);
+                default:
+                    return '';
+            }
+        },
+
+        // Export and sharing functionality
+        shareTaskList() {
+            if (navigator.share) {
+                navigator.share({
+                    title: 'My Task List',
+                    text: `Check out my task list with ${this.items.length} tasks!`,
+                    url: window.location.href
+                }).catch(console.error);
+            } else {
+                // Fallback: copy to clipboard
+                navigator.clipboard.writeText(window.location.href).then(() => {
+                    this.toast.success('Task list link copied to clipboard!');
+                }).catch(() => {
+                    this.toast.error('Could not copy link. Please copy manually: ' + window.location.href);
+                });
+            }
+        },
+        
+        toggleExportMenu() {
+            this.exportMenu.open = !this.exportMenu.open;
+        },
+        
+        closeExportMenu() {
+            this.exportMenu.open = false;
+        },
+        
+        exportAsJSON() {
+            try {
+                const exportData = TaskDataService.downloadAsJSON(`tasks-export-${new Date().toISOString().split('T')[0]}.json`);
+                this.closeExportMenu();
+                this.toast.success('Tasks exported as JSON!');
+                return exportData;
+            } catch (error) {
+                console.error('JSON export failed:', error);
+                this.toast.error('Failed to export tasks as JSON.');
+            }
+        },
+        
+        exportAsPlainText() {
+            try {
+                const exportData = TaskDataService.downloadAsPlainText(`tasks-${new Date().toISOString().split('T')[0]}.txt`);
+                this.closeExportMenu();
+                this.toast.success('Tasks exported as text file!');
+                return exportData;
+            } catch (error) {
+                console.error('Plain text export failed:', error);
+                this.toast.error('Failed to export tasks as text.');
+            }
+        },
+        
+        exportAsICalendar() {
+            try {
+                const exportData = TaskDataService.downloadAsICalendar(`tasks-${new Date().toISOString().split('T')[0]}.ics`);
+                this.closeExportMenu();
+                this.toast.success('Tasks exported as calendar file!');
+                return exportData;
+            } catch (error) {
+                console.error('iCalendar export failed:', error);
+                this.toast.error('Failed to export tasks as calendar.');
+            }
+        },
+        
+        handleClickOutside(event) {
+            if (this.exportMenu.open && !event.target.closest('.export-dropdown')) {
+                this.closeExportMenu();
+            }
         }
     }
 };
@@ -333,13 +533,158 @@ export default {
                     Calendar
                 </button>
             </div>
+
+            <!-- Task Statistics (Calendar mode only) -->
+            <div v-if="viewMode === 'calendar'" class="task-stats-inline">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <svg viewBox="0 0 24 24" width="18" height="18">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
+                            <polyline points="12,6 12,12 16,14" stroke="currentColor" stroke-width="2" fill="none"/>
+                        </svg>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number">{{ items.length }}</div>
+                        <div class="stat-label">Total</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card completed">
+                    <div class="stat-icon">
+                        <svg viewBox="0 0 24 24" width="18" height="18">
+                            <path d="M22 11.08V12a10 10 0 11-5.93-9.14" stroke="currentColor" stroke-width="2" fill="none"/>
+                            <polyline points="22,4 12,14.01 9,11.01" stroke="currentColor" stroke-width="2" fill="none"/>
+                        </svg>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number">{{ completedTasks }}</div>
+                        <div class="stat-label">Done</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card pending">
+                    <div class="stat-icon">
+                        <svg viewBox="0 0 24 24" width="18" height="18">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
+                            <line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" stroke-width="2"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number">{{ pendingTasks }}</div>
+                        <div class="stat-label">Todo</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card high-priority">
+                    <div class="stat-icon">
+                        <svg viewBox="0 0 24 24" width="18" height="18">
+                            <polygon points="13,2 3,14 12,14 11,22 21,10 12,10" stroke="currentColor" stroke-width="2" fill="none"/>
+                        </svg>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number">{{ highPriorityTasks }}</div>
+                        <div class="stat-label">High</div>
+                    </div>
+                </div>
+
+                <div class="stat-card overdue" v-if="overdueTasks > 0">
+                    <div class="stat-icon">
+                        <svg viewBox="0 0 24 24" width="18" height="18">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
+                            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number">{{ overdueTasks }}</div>
+                        <div class="stat-label">Late</div>
+                    </div>
+                </div>
+            </div>
             
-            <button class="create-btn" @click="openTaskModal('create')" title="Create new task">
-                <svg viewBox="0 0 24 24" width="20" height="20">
-                    <path d="M12 5v14m-7-7h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                </svg>
-                New Task
-            </button>
+            <!-- Action buttons (Calendar mode only) and New Task button -->
+            <div class="action-buttons">
+                <template v-if="viewMode === 'calendar'">
+                    <button class="action-btn share-btn" @click="shareTaskList" title="Share task list">
+                        <svg viewBox="0 0 24 24" width="18" height="18">
+                            <circle cx="18" cy="5" r="3" stroke="currentColor" stroke-width="2" fill="none"/>
+                            <circle cx="6" cy="12" r="3" stroke="currentColor" stroke-width="2" fill="none"/>
+                            <circle cx="18" cy="19" r="3" stroke="currentColor" stroke-width="2" fill="none"/>
+                            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" stroke="currentColor" stroke-width="2"/>
+                            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                        Share
+                    </button>
+                    
+                    <div class="export-dropdown" :class="{ 'active': exportMenu.open }">
+                        <button class="action-btn export-btn" @click="toggleExportMenu" title="Export tasks">
+                            <svg viewBox="0 0 24 24" width="18" height="18">
+                                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" stroke="currentColor" stroke-width="2" fill="none"/>
+                                <polyline points="7,10 12,15 17,10" stroke="currentColor" stroke-width="2" fill="none"/>
+                                <line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                            Export
+                            <svg class="dropdown-arrow" viewBox="0 0 24 24" width="14" height="14" :style="{ transform: exportMenu.open ? 'rotate(180deg)' : 'rotate(0deg)' }">
+                                <polyline points="6,9 12,15 18,9" stroke="currentColor" stroke-width="2" fill="none"/>
+                            </svg>
+                        </button>
+                        
+                        <div v-if="exportMenu.open" class="export-menu">
+                            <button class="export-option json-export" @click="exportAsJSON">
+                                <div class="export-icon">
+                                    <svg viewBox="0 0 24 24" width="20" height="20">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2" fill="none"/>
+                                        <polyline points="14,2 14,8 20,8" stroke="currentColor" stroke-width="2" fill="none"/>
+                                        <path d="M10 12h4" stroke="currentColor" stroke-width="2"/>
+                                        <path d="M10 16h4" stroke="currentColor" stroke-width="2"/>
+                                    </svg>
+                                </div>
+                                <div class="export-info">
+                                    <div class="export-title">JSON Format</div>
+                                    <div class="export-desc">Complete data with metadata</div>
+                                </div>
+                            </button>
+                            
+                            <button class="export-option text-export" @click="exportAsPlainText">
+                                <div class="export-icon">
+                                    <svg viewBox="0 0 24 24" width="20" height="20">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2" fill="none"/>
+                                        <polyline points="14,2 14,8 20,8" stroke="currentColor" stroke-width="2" fill="none"/>
+                                        <line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2"/>
+                                        <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2"/>
+                                    </svg>
+                                </div>
+                                <div class="export-info">
+                                    <div class="export-title">Plain Text</div>
+                                    <div class="export-desc">Human-readable format</div>
+                                </div>
+                            </button>
+                            
+                            <button class="export-option ical-export" @click="exportAsICalendar">
+                                <div class="export-icon">
+                                    <svg viewBox="0 0 24 24" width="20" height="20">
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"/>
+                                        <line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" stroke-width="2"/>
+                                        <line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" stroke-width="2"/>
+                                        <line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="2"/>
+                                    </svg>
+                                </div>
+                                <div class="export-info">
+                                    <div class="export-title">iCalendar (.ics)</div>
+                                    <div class="export-desc">Import into calendar apps</div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+                
+                <button class="create-btn" @click="openTaskModal('create')" title="Create new task">
+                    <svg viewBox="0 0 24 24" width="20" height="20">
+                        <path d="M12 5v14m-7-7h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                    </svg>
+                    New Task
+                </button>
+            </div>
         </div>
 
         <!-- Cards View -->
@@ -435,7 +780,7 @@ export default {
 
         <!-- Calendar View -->
         <div v-else-if="viewMode === 'calendar'" class="calendar-view">
-            <Calendar :tasks="items" />
+            <Calendar :tasks="items" @open-task-detail="openTaskDetail" />
         </div>
 
         <!-- Image Gallery Modal -->
@@ -466,9 +811,56 @@ export default {
                         </div>
 
                         <div class="form-group">
-                            <label for="taskDue">Due Date</label>
+                            <label for="taskDue">
+                                Due Date
+                                <button type="button" class="help-btn" @click="showDateHelp = !showDateHelp" title="Show date format examples">
+                                    <svg viewBox="0 0 24 24" width="14" height="14">
+                                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
+                                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                                        <circle cx="12" cy="17" r="1" fill="currentColor"/>
+                                    </svg>
+                                </button>
+                            </label>
                             <input id="taskDue" type="text" v-model="taskModal.form.due"
-                                placeholder="e.g., Tomorrow, Friday, Dec 25">
+                                placeholder="Today, Tomorrow, Friday, 2024-12-25..."
+                                @focus="showDateHelp = true"
+                                @blur="showDateHelp = false">
+                            
+                            <!-- Date format help -->
+                            <div v-if="showDateHelp" class="date-help">
+                                <h4>
+                                    <svg class="icon icon-calendar" viewBox="0 0 24 24" aria-hidden="true">
+                                        <title>Supported Date Formats</title>
+                                        <rect x="3" y="4" width="18" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+                                        <path d="M3 9h18" stroke="currentColor" stroke-width="2"/>
+                                        <path d="M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        <!-- Header bar glow -->
+                                        <rect x="3" y="4" width="18" height="5" rx="3" fill="currentColor" opacity="0.12"/>
+                                    </svg>
+                                </h4>
+                                <div class="format-section">
+                                    <strong>Quick Options:</strong>
+                                    <ul>
+                                        <li><code>Today</code> - {{ formatExample('today') }}</li>
+                                        <li><code>Tomorrow</code> - {{ formatExample('tomorrow') }}</li>
+                                    </ul>
+                                </div>
+                                <div class="format-section">
+                                    <strong>Weekdays:</strong>
+                                    <ul>
+                                        <li><code>Monday</code>, <code>Mon</code> - Next Monday</li>
+                                        <li><code>Friday</code>, <code>Fri</code> - Next Friday</li>
+                                        <li>Any weekday name works!</li>
+                                    </ul>
+                                </div>
+                                <div class="format-section">
+                                    <strong>Specific Dates:</strong>
+                                    <ul>
+                                        <li><code>YYYY-MM-DD</code> - e.g., <code>2024-12-25</code></li>
+                                        <li><code>Next week</code> - {{ formatExample('nextweek') }}</li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -858,12 +1250,17 @@ export default {
     align-items: center;
     justify-content: space-between;
     margin-bottom: 32px;
-    gap: 20px;
+    gap: 24px;
     position: relative;
+    flex-wrap: wrap;
 
     @media (max-width: 768px) {
         flex-direction: column;
         text-align: center;
+        gap: 16px;
+    }
+
+    @media (min-width: 769px) and (max-width: 1200px) {
         gap: 16px;
     }
 }
@@ -934,6 +1331,287 @@ export default {
 
     svg {
         flex-shrink: 0;
+    }
+}
+
+/* Action buttons container */
+.action-buttons {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.3);
+        transform: translateY(-1px);
+    }
+
+    svg {
+        flex-shrink: 0;
+        opacity: 0.8;
+    }
+}
+
+/* Export dropdown */
+.export-dropdown {
+    position: relative;
+
+    .export-btn {
+        position: relative;
+        
+        .dropdown-arrow {
+            transition: transform 0.2s ease;
+            margin-left: 2px;
+        }
+    }
+
+    .export-menu {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        background: rgba(20, 20, 30, 0.95);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        min-width: 240px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+        overflow: hidden;
+        animation: slideDown 0.2s ease-out;
+    }
+
+    .export-option {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        padding: 12px 16px;
+        background: transparent;
+        border: none;
+        color: rgba(255, 255, 255, 0.9);
+        text-align: left;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        &:not(:last-child) {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .export-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            
+            svg {
+                opacity: 0.8;
+            }
+        }
+
+        .export-info {
+            flex: 1;
+
+            .export-title {
+                font-size: 14px;
+                font-weight: 600;
+                margin-bottom: 2px;
+            }
+
+            .export-desc {
+                font-size: 12px;
+                opacity: 0.7;
+            }
+        }
+
+        &.json-export:hover .export-icon {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+        }
+
+        &.text-export:hover .export-icon {
+            background: rgba(108, 117, 125, 0.2);
+            color: #6c757d;
+        }
+
+        &.ical-export:hover .export-icon {
+            background: rgba(40, 167, 69, 0.2);
+            color: #28a745;
+        }
+    }
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Task Statistics - Inline version */
+.task-stats-inline {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+
+    @media (max-width: 1200px) {
+        gap: 8px;
+    }
+
+    @media (max-width: 768px) {
+        display: none; // Hide on mobile to avoid clutter
+    }
+}
+
+.stat-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: fit-content;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.2);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.8);
+
+        svg {
+            flex-shrink: 0;
+        }
+    }
+
+    .stat-content {
+        .stat-number {
+            font-size: 16px;
+            font-weight: 700;
+            color: #e9edf8;
+            line-height: 1;
+            margin-bottom: 2px;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+    }
+
+    // Color variants
+    &.completed {
+        .stat-icon {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+        .stat-number {
+            color: #22c55e;
+        }
+    }
+
+    &.pending {
+        .stat-icon {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+        .stat-number {
+            color: #3b82f6;
+        }
+    }
+
+    &.high-priority {
+        .stat-icon {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+        .stat-number {
+            color: #ef4444;
+        }
+    }
+
+    &.overdue {
+        .stat-icon {
+            background: rgba(245, 101, 101, 0.2);
+            color: #f56565;
+        }
+        .stat-number {
+            color: #f56565;
+        }
+        border-color: rgba(245, 101, 101, 0.3);
+        
+        &:hover {
+            border-color: rgba(245, 101, 101, 0.5);
+            box-shadow: 0 8px 25px rgba(245, 101, 101, 0.15);
+        }
+    }
+
+    @media (max-width: 768px) {
+        min-width: 120px;
+        padding: 12px;
+        gap: 10px;
+
+        .stat-icon {
+            width: 36px;
+            height: 36px;
+            
+            svg {
+                width: 18px;
+                height: 18px;
+            }
+        }
+
+        .stat-content {
+            .stat-number {
+                font-size: 20px;
+            }
+
+            .stat-label {
+                font-size: 11px;
+            }
+        }
     }
 }
 
@@ -1512,6 +2190,111 @@ export default {
             width: 16px;
             height: 16px;
         }
+    }
+}
+
+/* Date Help Styles */
+.help-btn {
+    background: none;
+    border: none;
+    color: rgba(0, 180, 255, 0.7);
+    cursor: pointer;
+    margin-left: 6px;
+    padding: 2px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+        color: #00b4ff;
+        background: rgba(0, 180, 255, 0.1);
+        transform: scale(1.1);
+    }
+
+    svg {
+        stroke-width: 2;
+    }
+}
+
+.date-help {
+    background: linear-gradient(135deg, #1a2447, #1e2855);
+    border: 1px solid rgba(0, 180, 255, 0.3);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    animation: slideDown 0.3s ease;
+    position: relative;
+
+    &::before {
+        content: '';
+        position: absolute;
+        top: -6px;
+        left: 20px;
+        width: 12px;
+        height: 12px;
+        background: linear-gradient(135deg, #1a2447, #1e2855);
+        border: 1px solid rgba(0, 180, 255, 0.3);
+        border-bottom: none;
+        border-right: none;
+        transform: rotate(45deg);
+    }
+
+    h4 {
+        margin: 0 0 12px 0;
+        color: #4dd0ff;
+        font-size: 14px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .format-section {
+        margin-bottom: 12px;
+
+        strong {
+            color: #b8d4ff;
+            font-size: 13px;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        ul {
+            margin: 0;
+            padding-left: 16px;
+            
+            li {
+                color: #e1f0ff;
+                font-size: 12px;
+                margin-bottom: 3px;
+                line-height: 1.4;
+
+                code {
+                    background: rgba(0, 180, 255, 0.15);
+                    color: #4dd0ff;
+                    padding: 2px 6px;
+                    border-radius: 4px;
+                    font-family: 'Courier New', monospace;
+                    font-size: 11px;
+                    font-weight: 600;
+                    border: 1px solid rgba(0, 180, 255, 0.2);
+                }
+            }
+        }
+    }
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 </style>

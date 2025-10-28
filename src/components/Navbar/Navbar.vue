@@ -1,5 +1,11 @@
 <script setup lang="js">
-import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { ref, onMounted, onBeforeUnmount, nextTick, computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { useToast } from 'vue-toastification';
+import AuthService from '@/services/authService.js';
+
+const router = useRouter();
+const toast = useToast();
 
 const show = ref(false);
 const isMobile = ref(false);
@@ -9,6 +15,9 @@ const openBtnRef = ref(null);
 const overlayRef = ref(null);
 
 let mediaQuery;
+
+// Authentication state
+const isAuthenticated = computed(() => AuthService.isAuthenticated.value);
 
 /**
  * Apply or remove the `inert` attribute on the navbar.
@@ -108,6 +117,21 @@ onMounted(async () => {
 onBeforeUnmount(() => {
     if (mediaQuery) mediaQuery.removeEventListener('change', updateNav);
 });
+
+/**
+ * Handle user logout
+ */
+async function handleSignOut() {
+    try {
+        AuthService.logout();
+        closeSideBar();
+        router.push('/');
+        toast.success('Successfully signed out!');
+    } catch (error) {
+        console.error('Sign out error:', error);
+        toast.error('Error signing out. Please try again.');
+    }
+}
 </script>
 
 <template>
@@ -139,6 +163,8 @@ onBeforeUnmount(() => {
                 </button>
             </li>
 
+
+
             <li class="home">
                 <RouterLink to="/" custom v-slot="{ href, navigate, isActive }">
                     <a :href="href" class="navlink" :class="{ 'current-link': isActive }"
@@ -148,32 +174,46 @@ onBeforeUnmount(() => {
                 </RouterLink>
             </li>
 
-            <li>
-                <RouterLink to="/to-do-list-home" custom v-slot="{ href, navigate, isActive }">
-                    <a :href="href" class="navlink" :class="{ 'current-link': isActive }"
-                        @click.prevent="navigate(); closeSideBar()">
-                        To-Do List
-                    </a>
-                </RouterLink>
-            </li>
+            <!-- Authenticated User Links -->
+            <template v-if="isAuthenticated">
+                <li>
+                    <RouterLink to="/to-do-list" custom v-slot="{ href, navigate, isActive }">
+                        <a :href="href" class="navlink" :class="{ 'current-link': isActive }"
+                            @click.prevent="navigate(); closeSideBar()">
+                            To-Do List
+                        </a>
+                    </RouterLink>
+                </li>
 
-            <li>
-                <RouterLink to="/calendar" custom v-slot="{ href, navigate, isActive }">
-                    <a :href="href" class="navlink" :class="{ 'current-link': isActive }"
-                        @click.prevent="navigate(); closeSideBar()">
-                        Calendar
-                    </a>
-                </RouterLink>
-            </li>
 
-            <li>
-                <RouterLink to="/account" custom v-slot="{ href, navigate, isActive }">
-                    <a :href="href" class="navlink" :class="{ 'current-link': isActive }"
-                        @click.prevent="navigate(); closeSideBar()">
-                        Account
-                    </a>
-                </RouterLink>
-            </li>
+
+                <li>
+                    <RouterLink to="/profile" custom v-slot="{ href, navigate, isActive }">
+                        <a :href="href" class="navlink" :class="{ 'current-link': isActive }"
+                            @click.prevent="navigate(); closeSideBar()">
+                            Profile
+                        </a>
+                    </RouterLink>
+                </li>
+
+                <li>
+                    <button class="navlink sign-out-btn" @click="handleSignOut">
+                        Sign Out
+                    </button>
+                </li>
+            </template>
+
+            <!-- Guest User Links except  -->
+            <template v-else>
+                <li>
+                    <RouterLink to="/account" custom v-slot="{ href, navigate, isActive }">
+                        <a :href="href" class="navlink" :class="{ 'current-link': isActive }"
+                            @click.prevent="navigate(); closeSideBar()">
+                            Sign In
+                        </a>
+                    </RouterLink>
+                </li>
+            </template>
 
             <li>
                 <RouterLink to="/about" custom v-slot="{ href, navigate, isActive }">
@@ -211,6 +251,8 @@ nav ul {
     padding: 0;
     margin: 0;
 }
+
+
 
 // Pushes the "Home" link to the left in desktop mode for ergonomic reasons
 // Otherwise it doesn't look good
@@ -251,6 +293,77 @@ nav li {
     margin-left: auto;
     color: white;
     cursor: pointer;
+}
+
+$signout-bg: linear-gradient(135deg, #0ea5e9, #22d3ee);
+$signout-hover-bg: linear-gradient(135deg, #0284c7, #06b6d4); 
+$signout-shadow: rgba(56, 189, 248, 0.4); 
+$signout-hover-shadow: rgba(34, 211, 238, 0.6); 
+
+.sign-out-btn {
+    background: $signout-bg;
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.8em 1.4em;
+    text-align: center;
+    margin: 0.4em 1em;
+    box-shadow: 0 0 10px $signout-shadow;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.6s ease;
+    }
+
+    &:hover {
+        background: $signout-hover-bg;
+        box-shadow: 0 0 18px $signout-hover-shadow;
+        transform: translateY(-1px);
+
+        &::before {
+            left: 100%;
+        }
+    }
+
+    &:active {
+        transform: translateY(0);
+        box-shadow: 0 0 8px $signout-shadow;
+    }
+
+    &:focus {
+        outline: none;
+        box-shadow:
+            0 0 0 3px rgba(234, 88, 12, 0.4),
+            0 0 16px $signout-hover-shadow;
+    }
+
+    &::after {
+        content: "⇢";
+        margin-left: 0.6em;
+        font-size: 0.9em;
+        opacity: 0.8;
+    }
+
+    @media (max-width: 768px) {
+        width: calc(100% - 2em);
+        margin: 0.6em 1em;
+        font-size: 1.1rem;
+        padding: 0.9em;
+        border-radius: 12px;
+    }
 }
 
 // Position fixed and inset 0 to cover the entire screen

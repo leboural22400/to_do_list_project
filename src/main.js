@@ -6,18 +6,21 @@ import { createRouter, createWebHistory } from "vue-router";
 import Toast from "vue-toastification";
 import "vue-toastification/dist/index.css";
 
+// Authentication middleware (for the front-end)
+import { requireAuth, requireGuest } from "./middleware/authGuard.js";
+import { AuthService } from "./services/authService.js";
+
 // Styles
 import "./style.css";
 
 // Import pages
 import App from "./App.vue";
 import ToDoListHome from "./pages/ToDoListHome.vue";
-import toDoList from "./pages/to-do-list.vue";
 import About from "./pages/About.vue";
 import NotFound from "./pages/NotFound.vue";
 import Account from "./pages/Account.vue";
 import Home from "./pages/Home.vue";
-import Calendar from "./pages/Calendar.vue";
+import Profile from "./pages/Profile.vue";
 
 // Router
 const router = createRouter({
@@ -46,11 +49,12 @@ const router = createRouter({
         },
         { path: "/:catchAll(.*)", redirect: "/not-found" },
         {
-            path: "/to-do-list-home",
-            name: "ToDoListHome",
+            path: "/to-do-list",
+            name: "ToDoList",
             component: ToDoListHome,
+            beforeEnter: requireAuth,
             meta: {
-                title: "MyToDoList - To-Do List Home",
+                title: "MyToDoList - To-Do List",
                 description:
                     "Welcome to MyToDoList! Start managing your tasks efficiently and stay organized with our user-friendly application.",
             },
@@ -59,25 +63,17 @@ const router = createRouter({
             path: "/task/:id",
             name: "TaskDetail",
             component: () => import("./pages/TaskDetail.vue"),
+            beforeEnter: requireAuth,
             meta: {
                 title: "MyToDoList - Task Detail",
                 description: "View and manage the details of your task.",
             },
         },
         {
-            path: "/to-do-list",
-            name: "ToDoList",
-            component: toDoList,
-            meta: {
-                title: "MyToDoList - Your To-Do List",
-                description:
-                    "Manage your tasks efficiently with MyToDoList. Add, edit, and delete tasks to stay organized and productive.",
-            },
-        },
-        {
             path: "/account",
             name: "Account",
             component: Account,
+            beforeEnter: requireGuest,
             meta: {
                 title: "MyToDoList - Account",
                 description:
@@ -93,13 +89,15 @@ const router = createRouter({
                 description: "Learn more about MyToDoList and its features.",
             },
         },
+
         {
-            path: "/calendar",
-            name: "Calendar",
-            component: Calendar,
+            path: "/profile",
+            name: "Profile",
+            component: Profile,
+            beforeEnter: requireAuth,
             meta: {
-                title: "MyToDoList - Task Calendar",
-                description: "View and manage your tasks in a beautiful calendar layout. Plan your work efficiently and stay on track.",
+                title: "MyToDoList - Profile",
+                description: "Manage your profile, account settings, and preferences.",
             },
         },
     ],
@@ -134,6 +132,9 @@ router.beforeEach((to) => {
         document.head.appendChild(metaDescription);
     }
 });
+
+// Initialize AuthService before creating the app
+AuthService.init();
 
 const app = createApp(App);
 
