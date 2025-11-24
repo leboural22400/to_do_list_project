@@ -1,14 +1,13 @@
 <script>
-import { getAllListByUserID } from "@/middleware/listService";
-import { createNewList } from "@/middleware/listService";
-import { updateList } from "@/middleware/listService";
-import { destroyList } from "@/middleware/listService";
-
+// Toast notification
 import { useToast } from "vue-toastification";
-import UnsplashImages from "@/components/UnsplashImages/UnsplashImages.vue";
-import Calendar from "@/components/Calendar/Calendar.vue";
-import { TaskDataService } from "@/services/taskDataService";
-import { parseAndValidateDate, dateToISOString } from "@/utils/dateUtils.js";
+import UnsplashImages from "../UnsplashImages/UnsplashImages.vue";
+import Calendar from "../Calendar/Calendar.vue";
+import { TaskDataService } from "../../services/taskDataService.js";
+import {
+  parseAndValidateDate,
+  dateToISOString,
+} from "../../utils/dateUtils.js";
 
 export default {
   name: "TodoCards",
@@ -26,7 +25,7 @@ export default {
       viewMode: "cards", // 'cards' or 'calendar'
 
       // Use a centralized data service
-      items: null,
+      items: TaskDataService.getAllTasks(),
       gallery: {
         open: false,
         forItemId: null,
@@ -102,7 +101,6 @@ export default {
     document.addEventListener("keydown", this.handleKeydown);
     // Add click outside listener for export menu
     document.addEventListener("click", this.handleClickOutside);
-    this.getList();
   },
   beforeUnmount() {
     // Clean up the listener when the component is destroyed
@@ -110,16 +108,8 @@ export default {
     document.removeEventListener("click", this.handleClickOutside);
   },
   methods: {
-    async getList() {
-      try {
-        this.items = await getAllListByUserID(1);
-      } catch (err) {
-        console.log(err);
-      }
-    },
-    async toggle(item) {
-      item.stateList = !item.stateList;
-      await updateList({ stateList: item.stateList }, item.idList);
+    toggle(id) {
+      TaskDataService.toggleTaskStatus(id);
     },
 
     openGallery(item) {
@@ -203,12 +193,12 @@ export default {
       this.taskModal.open = true;
 
       if (mode === "edit" && item) {
-        this.taskModal.editingId = item.idList;
+        this.taskModal.editingId = item.id;
         this.taskModal.form = {
-          title: item.titleList,
-          tag: item.descriptionList,
-          due: item.dueDateList,
-          priority: item.priorityList,
+          title: item.title,
+          tag: item.tag,
+          due: item.due,
+          priority: item.priority,
         };
       } else {
         this.taskModal.editingId = null;
@@ -268,30 +258,33 @@ export default {
       this.closeTaskModal();
     },
 
-    async createTask(form) {
+    createTask(form) {
       const newTodo = {
-        titleList: form.title.trim(),
-        descriptionList: form.tag.trim() || "General",
-        dueDateList: form.due || "TBD", // form.due is already processed by validation
-        priorityList: form.priority,
-        stateList: false,
-        idUser: JSON.parse(localStorage.getItem("todoapp_user")).id,
+        title: form.title.trim(),
+        tag: form.tag.trim() || "General",
+        due: form.due || "TBD", // form.due is already processed by validation
+        priority: form.priority,
+        done: false,
+        imageUrl: "",
+        imagePosition: { x: 50, y: 50 },
       };
+
+      // Use TaskDataService to add the task (includes localStorage save)
       TaskDataService.addTask(newTodo);
-      await createNewList(newTodo);
-      location.reload();
+      this.toast.success(`Task "${form.title}" created successfully!`);
     },
 
     updateTask(form) {
       const updates = {
-        titleList: form.title.trim(),
-        descriptionList: form.tag.trim() || "General",
-        dueDateList: form.due || "TBD", // form.due is already processed by validation
-        priorityList: form.priority,
+        title: form.title.trim(),
+        tag: form.tag.trim() || "General",
+        due: form.due || "TBD", // form.due is already processed by validation
+        priority: form.priority,
       };
-      updateList(updates, this.taskModal.editingId);
+
       // Use TaskDataService to update the task (includes localStorage save)
-      location.reload();
+      TaskDataService.updateTask(this.taskModal.editingId, updates);
+      this.toast.success("Task updated successfully!");
     },
 
     deleteTodo(item, event) {
@@ -306,9 +299,11 @@ export default {
       const item = this.deleteModal.taskToDelete;
       if (!item) return;
 
-      destroyList(item.idList);
+      // Use TaskDataService to delete the task (includes localStorage save)
+      TaskDataService.deleteTask(item.id);
+      this.toast.success(`Task "${item.title}" deleted successfully!`);
+
       this.closeDeleteModal();
-      location.reload();
     },
 
     closeDeleteModal() {
@@ -321,7 +316,7 @@ export default {
       // If called from calendar (no event), navigate directly with context
       if (!event) {
         this.$router.push({
-          path: `/task/${item.idList}`,
+          path: `/task/${item.id}`,
           query: { from: "calendar" },
         });
         return;
@@ -338,13 +333,13 @@ export default {
       }
 
       // Prevent navigation if we're in image editing mode
-      if (this.editingImageId === item.idList) {
+      if (this.editingImageId === item.id) {
         return;
       }
 
       // Navigate to task detail route with context
       this.$router.push({
-        path: `/task/${item.idList}`,
+        path: `/task/${item.id}`,
         query: { from: "cards" },
       });
     },
@@ -353,8 +348,8 @@ export default {
       event.stopPropagation();
 
       // Generate a smart duplicate title
-      let duplicateTitle = item.titleList;
-      const existingTitles = this.items.map((task) => task.titleList);
+      let duplicateTitle = item.title;
+      const existingTitles = this.items.map((task) => task.title);
 
       // Check if title already has a number suffix
       const numberMatch = duplicateTitle.match(/^(.+?) (\d+)$/);
@@ -383,16 +378,17 @@ export default {
 
       // Use TaskDataService to add the new task
       const duplicatedTodo = {
-        titleList: duplicateTitle,
-        descriptionList: item.descriptionList,
-        dueDateList: item.dueDateList,
-        priorityList: item.priorityList,
-        stateList: false,
-        idUser: JSON.parse(localStorage.getItem("todoapp_user")).id,
+        title: duplicateTitle,
+        tag: item.tag,
+        due: item.due,
+        priority: item.priority,
+        done: false,
+        imageUrl: item.imageUrl,
+        imagePosition: item.imagePosition,
       };
 
-      createNewList(duplicatedTodo);
-      location.reload()
+      TaskDataService.addTask(duplicatedTodo);
+      this.toast.success(`Task duplicated successfully!`);
     },
 
     // View mode methods
@@ -516,7 +512,6 @@ export default {
 
 <template>
   <!-- Main Cards View -->
-  {{ items }}
   <section class="page">
     <!-- Centered Title -->
     <div class="header-title">
@@ -999,9 +994,9 @@ export default {
     <div v-if="viewMode === 'cards'" class="grid">
       <article
         v-for="item in items"
-        :key="item.idList"
+        :key="item.id"
         class="card"
-        :aria-pressed="item.stateList ? 'true' : 'false'"
+        :aria-pressed="item.done ? 'true' : 'false'"
         @click="openTaskDetail(item, $event)"
       >
         <!-- Card controls -->
@@ -1080,24 +1075,22 @@ export default {
                 }
               : {}
           "
-          @click="
-            editingImageId === item.idList ? finishImageEdit($event) : null
-          "
+          @click="editingImageId === item.id ? finishImageEdit($event) : null"
           @mousemove="updateImagePosition(item, $event)"
-          :class="{ 'editing-image': editingImageId === item.idList }"
-          :aria-label="`Task background for ${item.titleList}`"
+          :class="{ 'editing-image': editingImageId === item.id }"
+          :aria-label="`Task background for ${item.title}`"
           tabindex="0"
         >
-          <span class="chip" :data-priority="item.priorityList">{{
-            item.priorityList
+          <span class="chip" :data-priority="item.priority">{{
+            item.priority
           }}</span>
-          <span class="due">Due: {{ item.dueDateList }}</span>
+          <span class="due">Due: {{ item.due }}</span>
 
           <button
             class="check"
-            :class="{ on: item.stateList }"
+            :class="{ on: item.done }"
             aria-label="Mark done"
-            @click.stop="toggle(item)"
+            @click.stop="toggle(item.id)"
           >
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
               <path
@@ -1112,7 +1105,7 @@ export default {
           </button>
 
           <!-- Image Control Toolbar -->
-          <div class="image-controls" v-if="editingImageId !== item.idList">
+          <div class="image-controls" v-if="editingImageId !== item.id">
             <button
               class="img-btn add-img"
               title="Add/Change image"
@@ -1181,7 +1174,7 @@ export default {
           </div>
 
           <!-- Editing overlay -->
-          <div v-if="editingImageId === item.idList" class="edit-overlay">
+          <div v-if="editingImageId === item.id" class="edit-overlay">
             <span class="edit-hint"
               >Move cursor to reposition • Click to finish</span
             >
@@ -1190,10 +1183,8 @@ export default {
         </div>
 
         <div class="label">
-          <div class="title" :class="{ done: item.stateList }">
-            {{ item.titleList }}
-          </div>
-          <div class="tag">{{ item.descriptionList }}</div>
+          <div class="title" :class="{ done: item.done }">{{ item.title }}</div>
+          <div class="tag">{{ item.tag }}</div>
         </div>
       </article>
     </div>
