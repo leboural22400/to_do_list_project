@@ -144,6 +144,8 @@ const quoteProps = {
               :fill="true"
               :text="dynamicPrimaryText"
               @click.prevent="navigate()"
+              :basicpadd="true"
+              :paddx="true"
             ></Button>
           </RouterLink>
           <RouterLink to="/about" custom v-slot="{ href, navigate }">
@@ -151,11 +153,13 @@ const quoteProps = {
               variant="default"
               :text="props.secondaryText"
               @click.prevent="navigate()"
+              :basicpadd="true"
+              :paddx="true"
             ></Button>
           </RouterLink>
         </footer>
 
-        <!-- Trust indicators (we won't eat you) -->
+        <!-- Trust indicators -->
         <ul
           class="flex gap-2 flex-wrap mt-1 ps-0 text-(--muted) justify-center"
           aria-label="Highlights"
@@ -229,7 +233,13 @@ const quoteProps = {
           placeholder="New task..."
           aria-label="New task"
         />
-        <Button text="Add" variant="secondary" :fill="true"></Button>
+        <Button
+          text="Add"
+          variant="secondary"
+          :fill="true"
+          :basicpadd="true"
+          :paddx="true"
+        ></Button>
       </form>
 
       <ul class="list-none w-full m-0 pt-1 pb-2 px-0 grid gap-2">

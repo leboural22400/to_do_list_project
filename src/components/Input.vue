@@ -11,7 +11,7 @@
       :disabled="disableinput"
       class="!py-3 !px-3 border-2 !rounded-lg border-(--border-strong) !bg-(--border-strong) text-(--fg) text-base disabled:!opacity-60 disabled:!cursor-not-allowed"
       id="input"
-      required
+      :required="required || false"
       :placeholder="placeholder"
       :minlength="minlength"
       :value="modelValue"
@@ -29,6 +29,7 @@ export default {
     "minlength",
     "disableinput",
     "placeholder",
+    "required",
   ],
   emits: ["update:modelValue"],
 };

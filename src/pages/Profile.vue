@@ -1,185 +1,202 @@
-<script setup>
-import { ref, reactive, computed, onMounted } from "vue";
+<script>
+import { destroyUser, getUserByID, updateUser } from "@/middleware/userService";
+import { getAllListByUserID } from "@/middleware/listService";
+import { getAllTaskByListID } from "@/middleware/taskService";
+
 import { useRouter } from "vue-router";
-import { useToast } from "vue-toastification";
 import AuthService from "@/services/authService.js";
-import { taskData } from "@/services/taskDataService.js";
 
 import Button from "@/components/Button.vue";
 import Card from "@/components/Card.vue";
 import Input from "@/components/Input.vue";
 
-const router = useRouter();
-const toast = useToast();
+export default {
+  components: {
+    Button,
+    Card,
+    Input,
+  },
+  setup() {
+    const router = useRouter();
+    return { router };
+  },
+  data() {
+    return {
+      user: null,
+      tasks: [],
+      editMode: false,
+      isUpdating: false,
+      isChangingPassword: false,
+      isDeletingAccount: false,
+      showDeleteModal: false,
+      deleteConfirmation: "",
+      profileForm: {
+        firstName: "",
+        lastName: "",
+        email: "",
+      },
+      passwordForm: {
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      },
+    };
+  },
+  computed: {
+    taskStats() {
+      const total = this.tasks.length;
+      const completed = this.tasks.filter(
+        (task) => task.stateTask === 2
+      ).length;
+      const pending = this.tasks.filter((task) => task.stateTask === 0).length;
 
-// Reactive state
-const user = computed(() => AuthService.user.value);
-const editMode = ref(false);
-const isUpdating = ref(false);
-const isChangingPassword = ref(false);
-const isDeletingAccount = ref(false);
-const showDeleteModal = ref(false);
-const deleteConfirmation = ref("");
+      return { total, completed, pending };
+    },
+    completionPercentage() {
+      console.log(this.taskStats);
+      if (this.taskStats.total === 0) return 0;
+      return Math.round(
+        (this.taskStats.completed / this.taskStats.total) * 100
+      );
+    },
+  },
+  mounted() {
+    this.getUser();
+    this.getTasks();
+  },
+  methods: {
+    async getUser() {
+      try {
+        await getUserByID(AuthService.user.value).then((resp) => {
+          this.user = resp;
+          this.profileForm.firstName = this.user.nameUser.split(" ")[0];
+          this.profileForm.lastName = this.user.nameUser.split(" ")[1];
+          this.profileForm.email = this.user.emailUser;
+        });
+      } catch (err) {
+        console.log(err);
+        this.$router.push("/not-found");
+      }
+    },
+    formatDate(dateString) {
+      return new Date(dateString).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    },
+    async getTasks() {
+      getAllListByUserID(AuthService.user.value).then((res) => {
+        res.forEach((list) => {
+          getAllTaskByListID(list.idList).then((resTasks) => {
+            resTasks.forEach((task) => {
+              this.tasks.push(task);
+            });
+          });
+        });
+      });
+    },
+    toggleEditMode() {
+      if (this.editMode) {
+        initializeForm();
+      }
+      this.editMode = !this.editMode;
+    },
+    async updateProfile() {
+      console.log(this.profileForm);
+      if (!this.validateProfileForm()) return;
 
-// Forms
-const profileForm = reactive({
-  firstName: "",
-  lastName: "",
-  email: "",
-});
+      this.isUpdating = true;
+      try {
+        await AuthService.updateProfile(this.profileForm);
+        this.editMode = false;
+      } catch (error) {
+      } finally {
+        this.isUpdating = false;
+      }
+    },
+    async validateProfileForm() {
+      if (!this.profileForm.firstName.trim()) {
+        return false;
+      }
+      if (!this.profileForm.lastName.trim()) {
+        return false;
+      }
+      if (!this.profileForm.email.trim()) {
+        return false;
+      }
+      await updateUser(
+        {
+          nameUser:
+            this.profileForm.firstName.trim() +
+            " " +
+            this.profileForm.lastName.trim(),
+          emailUser: this.profileForm.email.trim(),
+        },
+        AuthService.user.value
+      ).then(() => location.reload());
+    },
+    async changePassword() {
+      if (!validatePasswordForm()) return;
 
-const passwordForm = reactive({
-  currentPassword: "",
-  newPassword: "",
-  confirmPassword: "",
-});
+      isChangingPassword.value = true;
+      try {
+        await AuthService.changePassword(
+          passwordForm.currentPassword,
+          passwordForm.newPassword
+        );
 
-// Task statistics
-const taskStats = computed(() => {
-  const tasks = taskData.tasks;
-  const total = tasks.length;
-  const completed = tasks.filter((task) => task.done).length;
-  const pending = total - completed;
+        // Clear form
+        passwordForm.currentPassword = "";
+        passwordForm.newPassword = "";
+        passwordForm.confirmPassword = "";
+      } catch (error) {
+      } finally {
+        isChangingPassword.value = false;
+      }
+    },
+    validatePasswordForm() {
+      if (!passwordForm.currentPassword) {
+        return false;
+      }
+      if (passwordForm.newPassword.length < 6) {
+        return false;
+      }
+      if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+        return false;
+      }
+      return true;
+    },
+    async signOut() {
+      try {
+        await AuthService.logout();
+        this.router.push("/account");
+      } catch (error) {
+        console.log(error);
+      }
+    },
+    confirmDeleteAccount() {
+      this.showDeleteModal = true;
+      this.deleteConfirmation = "";
+    },
+    async deleteAccount() {
+      if (this.deleteConfirmation !== "DELETE") return;
 
-  return { total, completed, pending };
-});
-
-const completionPercentage = computed(() => {
-  if (taskStats.value.total === 0) return 0;
-  return Math.round((taskStats.value.completed / taskStats.value.total) * 100);
-});
-
-// Methods
-const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+      this.isDeletingAccount = true;
+      try {
+        await destroyUser(AuthService.user.value).then(
+          async () => await AuthService.deleteAccount()
+        );
+        this.router.push("/account");
+      } catch (error) {
+        console.log(error);
+      } finally {
+        this.isDeletingAccount = false;
+        this.showDeleteModal = false;
+      }
+    },
+  },
 };
-
-const initializeForm = () => {
-  if (user.value) {
-    profileForm.firstName = user.value.firstName;
-    profileForm.lastName = user.value.lastName;
-    profileForm.email = user.value.email;
-  }
-};
-
-const toggleEditMode = () => {
-  if (editMode.value) {
-    // Cancel - reset form
-    initializeForm();
-  }
-  editMode.value = !editMode.value;
-};
-
-const updateProfile = async () => {
-  console.log(profileForm);
-  if (!validateProfileForm()) return;
-
-  isUpdating.value = true;
-  try {
-    await AuthService.updateProfile(profileForm);
-    editMode.value = false;
-    toast.success("Profile updated successfully!");
-  } catch (error) {
-    toast.error(error.message || "Failed to update profile");
-  } finally {
-    isUpdating.value = false;
-  }
-};
-
-const validateProfileForm = () => {
-  if (!profileForm.firstName.trim()) {
-    toast.error("First name is required");
-    return false;
-  }
-  if (!profileForm.lastName.trim()) {
-    toast.error("Last name is required");
-    return false;
-  }
-  if (!profileForm.email.trim()) {
-    toast.error("Email is required");
-    return false;
-  }
-  return true;
-};
-
-const changePassword = async () => {
-  if (!validatePasswordForm()) return;
-
-  isChangingPassword.value = true;
-  try {
-    await AuthService.changePassword(
-      passwordForm.currentPassword,
-      passwordForm.newPassword
-    );
-
-    // Clear form
-    passwordForm.currentPassword = "";
-    passwordForm.newPassword = "";
-    passwordForm.confirmPassword = "";
-
-    toast.success("Password changed successfully!");
-  } catch (error) {
-    toast.error(error.message || "Failed to change password");
-  } finally {
-    isChangingPassword.value = false;
-  }
-};
-
-const validatePasswordForm = () => {
-  if (!passwordForm.currentPassword) {
-    toast.error("Current password is required");
-    return false;
-  }
-  if (passwordForm.newPassword.length < 6) {
-    toast.error("New password must be at least 6 characters");
-    return false;
-  }
-  if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-    toast.error("Passwords do not match");
-    return false;
-  }
-  return true;
-};
-
-const signOutAllDevices = async () => {
-  try {
-    await AuthService.signOutAllDevices();
-    toast.success("Signed out of all devices successfully!");
-    router.push("/account");
-  } catch (error) {
-    toast.error(error.message || "Failed to sign out all devices");
-  }
-};
-
-const confirmDeleteAccount = () => {
-  showDeleteModal.value = true;
-  deleteConfirmation.value = "";
-};
-
-const deleteAccount = async () => {
-  if (deleteConfirmation.value !== "DELETE") return;
-
-  isDeletingAccount.value = true;
-  try {
-    await AuthService.deleteAccount();
-    toast.success("Account deleted successfully");
-    router.push("/account");
-  } catch (error) {
-    toast.error(error.message || "Failed to delete account");
-  } finally {
-    isDeletingAccount.value = false;
-    showDeleteModal.value = false;
-  }
-};
-
-// Lifecycle
-onMounted(() => {
-  initializeForm();
-});
 </script>
 
 <template>
@@ -195,11 +212,14 @@ onMounted(() => {
         </aside>
         <main>
           <h1 class="!text-3xl !font-bold !text-(--fg) !mb-2">
-            {{ user.firstName }} {{ user.lastName }}
+            {{ user == null ? "" : user.nameUser }}
           </h1>
-          <p class="!text-base text-(--muted) mb-2">{{ user.email }}</p>
+          <p class="!text-base text-(--muted) mb-2">
+            {{ user == null ? "" : user.emailUser }}
+          </p>
           <span class="text-base text-(--ghost)"
-            >Member since {{ formatDate(user.createdAt) }}</span
+            >Member since
+            {{ formatDate(user == null ? "" : user.dateJoinUser) }}</span
           >
         </main>
       </section>
@@ -283,6 +303,8 @@ onMounted(() => {
                   @click="toggleEditMode"
                   v-if="editMode"
                   :disabled="isUpdating"
+                  :basicpadd="true"
+                  :paddx="true"
                 >
                 </Button>
                 <Button
@@ -291,6 +313,8 @@ onMounted(() => {
                   @click="toggleEditMode"
                   v-else="editMode"
                   :disabled="isUpdating"
+                  :basicpadd="true"
+                  :paddx="true"
                 >
                 </Button>
                 <Button
@@ -299,6 +323,8 @@ onMounted(() => {
                   variant="secondary"
                   v-if="editMode"
                   :disabled="isUpdating"
+                  :basicpadd="true"
+                  :paddx="true"
                 >
                   {{ isUpdating ? "Updating..." : "Save Changes" }}
                 </Button>
@@ -340,6 +366,8 @@ onMounted(() => {
                   type="submit"
                   variant="secondary"
                   :text="isChangingPassword ? 'Changing...' : 'Change Password'"
+                  :basicpadd="true"
+                  :paddx="true"
                 ></Button>
               </footer></form
           ></template>
@@ -359,17 +387,17 @@ onMounted(() => {
                 class="flex !justify-between !items-center !p-6 border !border-(--alert)/20 rounded-lg bg-(--alert)/5"
               >
                 <div class="flex-1">
-                  <h5 class="!font-semibold !text-(--alert) mb-2">
-                    Sign Out All Devices
-                  </h5>
+                  <h5 class="!font-semibold !text-(--alert) mb-2">Sign Out</h5>
                   <p class="text-(--muted) m-0">
-                    Sign out of all devices and invalidate all active sessions.
+                    Sign out of the active session.
                   </p>
                 </div>
                 <Button
                   variant="alert"
-                  @click="signOutAllDevices"
-                  text="Sign Out All"
+                  @click="signOut"
+                  text="Sign Out"
+                  :basicpadd="true"
+                  :paddx="true"
                 ></Button>
               </section>
               <section
@@ -389,6 +417,8 @@ onMounted(() => {
                   :fill="true"
                   @click="confirmDeleteAccount"
                   text="Delete Account"
+                  :basicpadd="true"
+                  :paddx="true"
                 ></Button>
               </section>
             </div>
@@ -445,6 +475,8 @@ onMounted(() => {
               variant="default"
               text="Cancel"
               @click="showDeleteModal = false"
+              :basicpadd="true"
+              :paddx="true"
             ></Button>
             <Button
               variant="alert"
@@ -452,6 +484,8 @@ onMounted(() => {
               :disabled="deleteConfirmation !== 'DELETE' || isDeletingAccount"
               text="Delete Account"
               @click="deleteAccount"
+              :basicpadd="true"
+              :paddx="true"
             ></Button></div
         ></template>
       </Card>

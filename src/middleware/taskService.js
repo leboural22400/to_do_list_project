@@ -1,7 +1,7 @@
-export async function getAllListByUserID(userID) {
+export async function getAllTaskByListID(listID) {
   try {
     const resp = await fetch(
-      "http://localhost:8080/api/lists/" + userID + "/lists",
+      "http://localhost:8080/api/tasks/" + listID + "/all",
       {
         mode: "cors",
         method: "GET",
@@ -16,24 +16,9 @@ export async function getAllListByUserID(userID) {
   }
 }
 
-export async function getListByID(listID) {
+export async function createNewTask(body) {
   try {
-    const resp = await fetch("http://localhost:8080/api/lists/" + listID, {
-      mode: "cors",
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }).then((resp) => resp.json());
-    return resp;
-  } catch (err) {
-    return err;
-  }
-}
-
-export async function createNewList(body) {
-  try {
-    const resp = await fetch("http://localhost:8080/api/lists/", {
+    const resp = await fetch("http://localhost:8080/api/tasks/", {
       mode: "cors",
       method: "POST",
       headers: {
@@ -47,10 +32,10 @@ export async function createNewList(body) {
   }
 }
 
-export async function updateList(newBody, id) {
+export async function updateTask(newBody, id) {
   try {
     console.log(newBody);
-    const resp = await fetch("http://localhost:8080/api/lists/" + id, {
+    const resp = await fetch("http://localhost:8080/api/tasks/" + id, {
       mode: "cors",
       method: "PATCH",
       headers: {
@@ -65,9 +50,9 @@ export async function updateList(newBody, id) {
   }
 }
 
-export async function destroyList(id) {
+export async function destroyTask(id) {
   try {
-    const resp = await fetch("http://localhost:8080/api/lists/" + id, {
+    const resp = await fetch("http://localhost:8080/api/tasks/" + id, {
       mode: "cors",
       method: "DELETE",
       headers: {

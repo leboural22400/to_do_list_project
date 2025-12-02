@@ -4,17 +4,23 @@ import { createNewList } from "@/middleware/listService";
 import { updateList } from "@/middleware/listService";
 import { destroyList } from "@/middleware/listService";
 
+import Button from "@/components/Button.vue";
+import Pill from "@/components/Pill.vue";
+
 import { useToast } from "vue-toastification";
 import UnsplashImages from "@/components/UnsplashImages/UnsplashImages.vue";
 import Calendar from "@/components/Calendar/Calendar.vue";
-import { TaskDataService } from "@/services/taskDataService";
 import { parseAndValidateDate, dateToISOString } from "@/utils/dateUtils.js";
+import AuthService from "@/services/authService";
+import { destroyTask, getAllTaskByListID } from "@/middleware/taskService";
 
 export default {
   name: "TodoCards",
   components: {
     UnsplashImages,
     Calendar,
+    Button,
+    Pill,
   },
   setup() {
     const toast = useToast();
@@ -70,29 +76,31 @@ export default {
   },
   computed: {
     completedTasks() {
-      return this.items.filter((task) => task.done).length;
+      return this.items.filter((task) => task.stateList).length;
     },
     pendingTasks() {
-      return this.items.filter((task) => !task.done).length;
+      return this.items.filter((task) => !task.stateList).length;
     },
     highPriorityTasks() {
-      return this.items.filter((task) => task.priority === "high").length;
+      return this.items.filter((task) => task.priorityList === "high").length;
     },
     mediumPriorityTasks() {
-      return this.items.filter((task) => task.priority === "medium").length;
+      return this.items.filter((task) => task.priorityList === "medium").length;
     },
     lowPriorityTasks() {
-      return this.items.filter((task) => task.priority === "low").length;
+      return this.items.filter((task) => task.priorityList === "low").length;
     },
     tasksWithDueDate() {
-      return this.items.filter((task) => task.due && task.due.trim()).length;
+      return this.items.filter(
+        (task) => task.dueDateList && task.dueDateList.trim()
+      ).length;
     },
     overdueTasks() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       return this.items.filter((task) => {
-        if (!task.due || task.done) return false;
-        const dueDate = new Date(task.due);
+        if (!task.dueDateList || task.stateList) return false;
+        const dueDate = new Date(task.dueDateList);
         return dueDate < today;
       }).length;
     },
@@ -112,7 +120,8 @@ export default {
   methods: {
     async getList() {
       try {
-        this.items = await getAllListByUserID(1);
+        this.items = await getAllListByUserID(AuthService.user.value);
+        console.log(AuthService.user.value);
       } catch (err) {
         console.log(err);
       }
@@ -124,7 +133,7 @@ export default {
 
     openGallery(item) {
       this.gallery.open = true;
-      this.gallery.forItemId = item.id;
+      this.gallery.forItemId = item.idList;
     },
     closeGallery() {
       this.gallery.open = false;
@@ -133,23 +142,20 @@ export default {
 
     // ---------- Pick a default image (zero API calls) ----------
     selectDefault(url) {
-      TaskDataService.updateTaskImage(this.gallery.forItemId, url);
-      this.toast.success("Default background image applied!");
-      this.closeGallery();
+      this.selectImage(url);
     },
 
     selectImage(photo) {
-      // Use the service to update the task image
-      TaskDataService.updateTaskImage(
-        this.gallery.forItemId,
-        photo?.urls?.regular || photo?.urls?.small || photo
-      );
-      this.toast.success("Background image applied!");
-      this.closeGallery();
-    },
-    removeImage(item) {
-      TaskDataService.updateTaskImage(item.id, "");
-      this.toast.info("Background image removed.");
+      console.log(this.gallery.forItemId);
+      updateList(
+        {
+          imageSrcLinkList: photo?.urls?.regular || photo?.urls?.small || photo,
+        },
+        this.gallery.forItemId
+      ).then(() => {
+        this.closeGallery();
+        location.reload();
+      });
     },
 
     handleKeydown(event) {
@@ -192,9 +198,6 @@ export default {
         x: Math.max(0, Math.min(100, x)),
         y: Math.max(0, Math.min(100, y)),
       };
-
-      // Update position in the data service
-      TaskDataService.updateTaskImagePosition(item.id, newPosition);
     },
 
     // ---------- Task Modal Management ----------
@@ -272,26 +275,26 @@ export default {
       const newTodo = {
         titleList: form.title.trim(),
         descriptionList: form.tag.trim() || "General",
-        dueDateList: form.due || "TBD", // form.due is already processed by validation
+        dueDateList: form.due || Date.now() + 86400000,
         priorityList: form.priority,
         stateList: false,
-        idUser: JSON.parse(localStorage.getItem("todoapp_user")).id,
+        idUser: AuthService.user.value,
       };
-      TaskDataService.addTask(newTodo);
-      await createNewList(newTodo);
-      location.reload();
+      await createNewList(newTodo).then(() => {
+        location.reload();
+      });
     },
 
-    updateTask(form) {
+    async updateTask(form) {
       const updates = {
         titleList: form.title.trim(),
         descriptionList: form.tag.trim() || "General",
         dueDateList: form.due || "TBD", // form.due is already processed by validation
         priorityList: form.priority,
       };
-      updateList(updates, this.taskModal.editingId);
-      // Use TaskDataService to update the task (includes localStorage save)
-      location.reload();
+      await updateList(updates, this.taskModal.editingId).then(() =>
+        location.reload()
+      );
     },
 
     deleteTodo(item, event) {
@@ -302,13 +305,13 @@ export default {
       this.deleteModal.taskToDelete = item;
     },
 
-    confirmDelete() {
+    async confirmDelete() {
       const item = this.deleteModal.taskToDelete;
       if (!item) return;
-
-      destroyList(item.idList);
-      this.closeDeleteModal();
-      location.reload();
+      await destroyList(item.idList).then(() => {
+        this.closeDeleteModal();
+        location.reload();
+      });
     },
 
     closeDeleteModal() {
@@ -322,7 +325,6 @@ export default {
       if (!event) {
         this.$router.push({
           path: `/task/${item.idList}`,
-          query: { from: "calendar" },
         });
         return;
       }
@@ -349,7 +351,7 @@ export default {
       });
     },
 
-    duplicateTodo(item, event) {
+    async duplicateTodo(item, event) {
       event.stopPropagation();
 
       // Generate a smart duplicate title
@@ -381,18 +383,16 @@ export default {
         duplicateTitle = candidateTitle;
       }
 
-      // Use TaskDataService to add the new task
       const duplicatedTodo = {
         titleList: duplicateTitle,
         descriptionList: item.descriptionList,
         dueDateList: item.dueDateList,
         priorityList: item.priorityList,
         stateList: false,
-        idUser: JSON.parse(localStorage.getItem("todoapp_user")).id,
+        idUser: AuthService.user.value,
       };
 
-      createNewList(duplicatedTodo);
-      location.reload()
+      await createNewList(duplicatedTodo).then(() => location.reload());
     },
 
     // View mode methods
@@ -463,48 +463,6 @@ export default {
       this.exportMenu.open = false;
     },
 
-    exportAsJSON() {
-      try {
-        const exportData = TaskDataService.downloadAsJSON(
-          `tasks-export-${new Date().toISOString().split("T")[0]}.json`
-        );
-        this.closeExportMenu();
-        this.toast.success("Tasks exported as JSON!");
-        return exportData;
-      } catch (error) {
-        console.error("JSON export failed:", error);
-        this.toast.error("Failed to export tasks as JSON.");
-      }
-    },
-
-    exportAsPlainText() {
-      try {
-        const exportData = TaskDataService.downloadAsPlainText(
-          `tasks-${new Date().toISOString().split("T")[0]}.txt`
-        );
-        this.closeExportMenu();
-        this.toast.success("Tasks exported as text file!");
-        return exportData;
-      } catch (error) {
-        console.error("Plain text export failed:", error);
-        this.toast.error("Failed to export tasks as text.");
-      }
-    },
-
-    exportAsICalendar() {
-      try {
-        const exportData = TaskDataService.downloadAsICalendar(
-          `tasks-${new Date().toISOString().split("T")[0]}.ics`
-        );
-        this.closeExportMenu();
-        this.toast.success("Tasks exported as calendar file!");
-        return exportData;
-      } catch (error) {
-        console.error("iCalendar export failed:", error);
-        this.toast.error("Failed to export tasks as calendar.");
-      }
-    },
-
     handleClickOutside(event) {
       if (this.exportMenu.open && !event.target.closest(".export-dropdown")) {
         this.closeExportMenu();
@@ -516,119 +474,129 @@ export default {
 
 <template>
   <!-- Main Cards View -->
-  {{ items }}
-  <section class="page">
+  <section class="min-h-lvh bg-(--page-bg) !items-center !my-8 !mx-8">
     <!-- Centered Title -->
-    <div class="header-title">
-      <h1 class="neon-title">MY TO-DOs</h1>
+    <div class="max-w-6xl !mx-auto text-center !mb-6">
+      <h1 class="!text-6xl !font-extrabold">My Lists</h1>
     </div>
 
     <!-- Controls Row -->
-    <div class="header-controls">
+    <div
+      class="max-w-6xl !mx-auto flex items-center justify-between max-sm:justify-center !mb-8 gap-6 flex-wrap"
+    >
       <!-- View Mode Switch -->
-      <div class="view-switch">
-        <button
-          class="switch-btn"
-          :class="{ active: viewMode === 'cards' }"
+      <div
+        class="flex !bg-transparent border !border-(--border) !rounded-xl !p-1 !backdrop-blur-md gap-4"
+      >
+        <Button
+          :basicpadd="true"
+          :variant="viewMode == 'cards' ? 'secondary' : 'default'"
           @click="viewMode = 'cards'"
           title="Cards view"
         >
-          <svg viewBox="0 0 24 24" width="18" height="18">
-            <rect
-              x="3"
-              y="3"
-              width="7"
-              height="7"
-              rx="2"
-              stroke="currentColor"
-              stroke-width="2"
-              fill="none"
-            />
-            <rect
-              x="14"
-              y="3"
-              width="7"
-              height="7"
-              rx="2"
-              stroke="currentColor"
-              stroke-width="2"
-              fill="none"
-            />
-            <rect
-              x="3"
-              y="14"
-              width="7"
-              height="7"
-              rx="2"
-              stroke="currentColor"
-              stroke-width="2"
-              fill="none"
-            />
-            <rect
-              x="14"
-              y="14"
-              width="7"
-              height="7"
-              rx="2"
-              stroke="currentColor"
-              stroke-width="2"
-              fill="none"
-            />
-          </svg>
-          Cards
-        </button>
-
-        <button
-          class="switch-btn"
-          :class="{ active: viewMode === 'calendar' }"
+          <template #body
+            ><svg viewBox="0 0 24 24" width="18" height="18" class="!mr-2">
+              <rect
+                x="3"
+                y="3"
+                width="7"
+                height="7"
+                rx="2"
+                stroke="currentColor"
+                stroke-width="2"
+                fill="none"
+              />
+              <rect
+                x="14"
+                y="3"
+                width="7"
+                height="7"
+                rx="2"
+                stroke="currentColor"
+                stroke-width="2"
+                fill="none"
+              />
+              <rect
+                x="3"
+                y="14"
+                width="7"
+                height="7"
+                rx="2"
+                stroke="currentColor"
+                stroke-width="2"
+                fill="none"
+              />
+              <rect
+                x="14"
+                y="14"
+                width="7"
+                height="7"
+                rx="2"
+                stroke="currentColor"
+                stroke-width="2"
+                fill="none"
+              />
+            </svg>
+            Cards</template
+          >
+        </Button>
+        <Button
+          :basicpadd="true"
+          :variant="viewMode == 'cards' ? 'default' : 'secondary'"
           @click="viewMode = 'calendar'"
           title="Calendar view"
         >
-          <svg viewBox="0 0 24 24" width="18" height="18">
-            <rect
-              x="3"
-              y="4"
-              width="18"
-              height="18"
-              rx="2"
-              ry="2"
-              stroke="currentColor"
-              stroke-width="2"
-              fill="none"
-            />
-            <line
-              x1="16"
-              y1="2"
-              x2="16"
-              y2="6"
-              stroke="currentColor"
-              stroke-width="2"
-            />
-            <line
-              x1="8"
-              y1="2"
-              x2="8"
-              y2="6"
-              stroke="currentColor"
-              stroke-width="2"
-            />
-            <line
-              x1="3"
-              y1="10"
-              x2="21"
-              y2="10"
-              stroke="currentColor"
-              stroke-width="2"
-            />
-          </svg>
-          Calendar
-        </button>
+          <template #body
+            ><svg viewBox="0 0 24 24" width="18" height="18" class="!mr-2">
+              <rect
+                x="3"
+                y="4"
+                width="18"
+                height="18"
+                rx="2"
+                ry="2"
+                stroke="currentColor"
+                stroke-width="2"
+                fill="none"
+              />
+              <line
+                x1="16"
+                y1="2"
+                x2="16"
+                y2="6"
+                stroke="currentColor"
+                stroke-width="2"
+              />
+              <line
+                x1="8"
+                y1="2"
+                x2="8"
+                y2="6"
+                stroke="currentColor"
+                stroke-width="2"
+              />
+              <line
+                x1="3"
+                y1="10"
+                x2="21"
+                y2="10"
+                stroke="currentColor"
+                stroke-width="2"
+              />
+            </svg>
+            Calendar</template
+          >
+        </Button>
       </div>
 
       <!-- Task Statistics (Calendar mode only) -->
-      <div v-if="viewMode === 'calendar'" class="task-stats-inline">
-        <div class="stat-card">
-          <div class="stat-icon">
+      <div v-if="viewMode === 'calendar'" class="flex items-center gap-2">
+        <div
+          class="flex items-center gap-2 !min-w-fit !py-2 !px-3 !bg-(--border)/30 !backdrop-blur-md !border !border-(--border) rounded-lg transition-all shrink-0"
+        >
+          <div
+            class="flex items-center justify-center w-7 h-7 rounded-md !bg-(--border)"
+          >
             <svg viewBox="0 0 24 24" width="18" height="18">
               <circle
                 cx="12"
@@ -646,14 +614,18 @@ export default {
               />
             </svg>
           </div>
-          <div class="stat-content">
-            <div class="stat-number">{{ items.length }}</div>
-            <div class="stat-label">Total</div>
+          <div class="">
+            <h6 class="!font-bold !mb-0.5">{{ items.length }}</h6>
+            <p class="text-[10px] mb-0 uppercase text-(--muted)">Total</p>
           </div>
         </div>
 
-        <div class="stat-card completed">
-          <div class="stat-icon">
+        <div
+          class="flex items-center gap-2 !min-w-fit !py-2 !px-3 !bg-(--border)/30 !backdrop-blur-md !border !border-(--border) rounded-lg transition-all shrink-0"
+        >
+          <div
+            class="flex items-center justify-center w-7 h-7 rounded-md !bg-(--success)/20 text-(--success)"
+          >
             <svg viewBox="0 0 24 24" width="18" height="18">
               <path
                 d="M22 11.08V12a10 10 0 11-5.93-9.14"
@@ -669,14 +641,20 @@ export default {
               />
             </svg>
           </div>
-          <div class="stat-content">
-            <div class="stat-number">{{ completedTasks }}</div>
-            <div class="stat-label">Done</div>
+          <div class="">
+            <h6 class="!font-bold !mb-0.5 !text-(--success)">
+              {{ completedTasks }}
+            </h6>
+            <p class="text-[10px] mb-0 uppercase text-(--muted)">Done</p>
           </div>
         </div>
 
-        <div class="stat-card pending">
-          <div class="stat-icon">
+        <div
+          class="flex items-center gap-2 !min-w-fit !py-2 !px-3 !bg-(--border)/30 !backdrop-blur-md !border !border-(--border) rounded-lg transition-all shrink-0"
+        >
+          <div
+            class="flex items-center justify-center w-7 h-7 rounded-md !bg-(--info)/20 text-(--info)"
+          >
             <svg viewBox="0 0 24 24" width="18" height="18">
               <circle
                 cx="12"
@@ -704,14 +682,20 @@ export default {
               />
             </svg>
           </div>
-          <div class="stat-content">
-            <div class="stat-number">{{ pendingTasks }}</div>
-            <div class="stat-label">Todo</div>
+          <div class="">
+            <h6 class="!font-bold !mb-0.5 !text-(--info)">
+              {{ pendingTasks }}
+            </h6>
+            <p class="text-[10px] mb-0 uppercase text-(--muted)">Todo</p>
           </div>
         </div>
 
-        <div class="stat-card high-priority">
-          <div class="stat-icon">
+        <div
+          class="flex items-center gap-2 !min-w-fit !py-2 !px-3 !bg-(--border)/30 !backdrop-blur-md !border !border-(--border) rounded-lg transition-all shrink-0"
+        >
+          <div
+            class="flex items-center justify-center w-7 h-7 rounded-md !bg-(--alert)/20 text-(--alert)"
+          >
             <svg viewBox="0 0 24 24" width="18" height="18">
               <polygon
                 points="13,2 3,14 12,14 11,22 21,10 12,10"
@@ -721,14 +705,21 @@ export default {
               />
             </svg>
           </div>
-          <div class="stat-content">
-            <div class="stat-number">{{ highPriorityTasks }}</div>
-            <div class="stat-label">High</div>
+          <div class="">
+            <h6 class="!font-bold !mb-0.5 !text-(--alert)">
+              {{ highPriorityTasks }}
+            </h6>
+            <p class="text-[10px] mb-0 uppercase text-(--muted)">High</p>
           </div>
         </div>
 
-        <div class="stat-card overdue" v-if="overdueTasks > 0">
-          <div class="stat-icon">
+        <div
+          class="flex items-center gap-2 !min-w-fit !py-2 !px-3 !bg-(--border)/30 !backdrop-blur-md !border !border-(--alert)/30 rounded-lg transition-all shrink-0"
+          v-if="overdueTasks > 0"
+        >
+          <div
+            class="flex items-center justify-center w-7 h-7 rounded-md !bg-(--alert)/20 text-(--alert)"
+          >
             <svg viewBox="0 0 24 24" width="18" height="18">
               <circle
                 cx="12"
@@ -748,459 +739,200 @@ export default {
               />
             </svg>
           </div>
-          <div class="stat-content">
-            <div class="stat-number">{{ overdueTasks }}</div>
-            <div class="stat-label">Late</div>
+          <div class="">
+            <h6 class="!font-bold !mb-0.5 !text-(--alert)">
+              {{ overdueTasks }}
+            </h6>
+            <div class="text-[10px] mb-0 uppercase text-(--muted)">Late</div>
           </div>
         </div>
       </div>
 
       <!-- Action buttons (Calendar mode only) and New Task button -->
-      <div class="action-buttons">
-        <template v-if="viewMode === 'calendar'">
-          <button
-            class="action-btn share-btn"
-            @click="shareTaskList"
-            title="Share task list"
-          >
-            <svg viewBox="0 0 24 24" width="18" height="18">
-              <circle
-                cx="18"
-                cy="5"
-                r="3"
-                stroke="currentColor"
-                stroke-width="2"
-                fill="none"
-              />
-              <circle
-                cx="6"
-                cy="12"
-                r="3"
-                stroke="currentColor"
-                stroke-width="2"
-                fill="none"
-              />
-              <circle
-                cx="18"
-                cy="19"
-                r="3"
-                stroke="currentColor"
-                stroke-width="2"
-                fill="none"
-              />
-              <line
-                x1="8.59"
-                y1="13.51"
-                x2="15.42"
-                y2="17.49"
-                stroke="currentColor"
-                stroke-width="2"
-              />
-              <line
-                x1="15.41"
-                y1="6.51"
-                x2="8.59"
-                y2="10.49"
-                stroke="currentColor"
-                stroke-width="2"
-              />
-            </svg>
-            Share
-          </button>
-
-          <div class="export-dropdown" :class="{ active: exportMenu.open }">
-            <button
-              class="action-btn export-btn"
-              @click="toggleExportMenu"
-              title="Export tasks"
-            >
-              <svg viewBox="0 0 24 24" width="18" height="18">
-                <path
-                  d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  fill="none"
-                />
-                <polyline
-                  points="7,10 12,15 17,10"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  fill="none"
-                />
-                <line
-                  x1="12"
-                  y1="15"
-                  x2="12"
-                  y2="3"
-                  stroke="currentColor"
-                  stroke-width="2"
-                />
-              </svg>
-              Export
-              <svg
-                class="dropdown-arrow"
-                viewBox="0 0 24 24"
-                width="14"
-                height="14"
-                :style="{
-                  transform: exportMenu.open
-                    ? 'rotate(180deg)'
-                    : 'rotate(0deg)',
-                }"
-              >
-                <polyline
-                  points="6,9 12,15 18,9"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  fill="none"
-                />
-              </svg>
-            </button>
-
-            <div v-if="exportMenu.open" class="export-menu">
-              <button class="export-option json-export" @click="exportAsJSON">
-                <div class="export-icon">
-                  <svg viewBox="0 0 24 24" width="20" height="20">
-                    <path
-                      d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      fill="none"
-                    />
-                    <polyline
-                      points="14,2 14,8 20,8"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      fill="none"
-                    />
-                    <path d="M10 12h4" stroke="currentColor" stroke-width="2" />
-                    <path d="M10 16h4" stroke="currentColor" stroke-width="2" />
-                  </svg>
-                </div>
-                <div class="export-info">
-                  <div class="export-title">JSON Format</div>
-                  <div class="export-desc">Complete data with metadata</div>
-                </div>
-              </button>
-
-              <button
-                class="export-option text-export"
-                @click="exportAsPlainText"
-              >
-                <div class="export-icon">
-                  <svg viewBox="0 0 24 24" width="20" height="20">
-                    <path
-                      d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      fill="none"
-                    />
-                    <polyline
-                      points="14,2 14,8 20,8"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      fill="none"
-                    />
-                    <line
-                      x1="16"
-                      y1="13"
-                      x2="8"
-                      y2="13"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    />
-                    <line
-                      x1="16"
-                      y1="17"
-                      x2="8"
-                      y2="17"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    />
-                  </svg>
-                </div>
-                <div class="export-info">
-                  <div class="export-title">Plain Text</div>
-                  <div class="export-desc">Human-readable format</div>
-                </div>
-              </button>
-
-              <button
-                class="export-option ical-export"
-                @click="exportAsICalendar"
-              >
-                <div class="export-icon">
-                  <svg viewBox="0 0 24 24" width="20" height="20">
-                    <rect
-                      x="3"
-                      y="4"
-                      width="18"
-                      height="18"
-                      rx="2"
-                      ry="2"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      fill="none"
-                    />
-                    <line
-                      x1="16"
-                      y1="2"
-                      x2="16"
-                      y2="6"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    />
-                    <line
-                      x1="8"
-                      y1="2"
-                      x2="8"
-                      y2="6"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    />
-                    <line
-                      x1="3"
-                      y1="10"
-                      x2="21"
-                      y2="10"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    />
-                  </svg>
-                </div>
-                <div class="export-info">
-                  <div class="export-title">iCalendar (.ics)</div>
-                  <div class="export-desc">Import into calendar apps</div>
-                </div>
-              </button>
-            </div>
-          </div>
-        </template>
-
-        <button
-          class="create-btn"
+      <div class="flex items-center">
+        <Button
+          variant="secondary"
+          :fill="true"
+          :basicpadd="true"
           @click="openTaskModal('create')"
           title="Create new task"
         >
-          <svg viewBox="0 0 24 24" width="20" height="20">
-            <path
-              d="M12 5v14m-7-7h14"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-            />
-          </svg>
-          New Task
-        </button>
+          <template #body
+            ><svg viewBox="0 0 24 24" width="20" height="20" class="!mr-2">
+              <path
+                d="M12 5v14m-7-7h14"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+            </svg>
+            New List</template
+          >
+        </Button>
       </div>
     </div>
 
     <!-- Cards View -->
-    <div v-if="viewMode === 'cards'" class="grid">
+    <div
+      v-if="viewMode === 'cards'"
+      class="flex flex-wrap !gap-6 max-w-6xl !mx-auto"
+    >
       <article
         v-for="item in items"
         :key="item.idList"
-        class="card"
+        class="relative overflow-hidden rounded-2xl !shadow-2xl min-w-64 group"
         :aria-pressed="item.stateList ? 'true' : 'false'"
         @click="openTaskDetail(item, $event)"
       >
         <!-- Card controls -->
-        <div class="card-controls">
-          <button
-            class="card-control edit"
-            @click="openTaskModal('edit', item)"
-            title="Edit task"
-          >
-            <svg viewBox="0 0 24 24" width="14" height="14">
-              <path
-                d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
-                stroke="currentColor"
-                stroke-width="2"
-                fill="none"
-              />
-              <path
-                d="m18.5 2.5-8 8v4h4l8-8a2 2 0 0 0 0-3z"
-                stroke="currentColor"
-                stroke-width="2"
-                fill="none"
-              />
-            </svg>
-          </button>
-          <button
-            class="card-control duplicate"
-            @click="duplicateTodo(item, $event)"
+        <div
+          class="absolute !top-3 !left-3 !opacity-0 z-10 flex gap-1 transition-opacity group-hover:!opacity-100"
+        >
+          <Button @click.stop="openTaskModal('edit', item)" title="Edit task">
+            <template #body
+              ><svg viewBox="0 0 24 24" width="14" height="14">
+                <path
+                  d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  fill="none"
+                />
+                <path
+                  d="m18.5 2.5-8 8v4h4l8-8a2 2 0 0 0 0-3z"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  fill="none"
+                />
+              </svg>
+            </template>
+          </Button>
+          <Button
+            @click.stop="duplicateTodo(item, $event)"
             title="Duplicate task"
           >
-            <svg viewBox="0 0 24 24" width="14" height="14">
-              <rect
-                x="9"
-                y="9"
-                width="13"
-                height="13"
-                rx="2"
-                ry="2"
-                stroke="currentColor"
-                stroke-width="2"
-                fill="none"
-              />
-              <path
-                d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
-                stroke="currentColor"
-                stroke-width="2"
-                fill="none"
-              />
-            </svg>
-          </button>
-          <button
-            class="card-control delete"
-            @click="deleteTodo(item, $event)"
-            title="Delete task"
-          >
-            <svg viewBox="0 0 24 24" width="14" height="14">
-              <path
-                d="M3 6h18m-2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"
-                stroke="currentColor"
-                stroke-width="2"
-                fill="none"
-              />
-            </svg>
-          </button>
-        </div>
-
-        <div
-          class="thumb"
-          :style="
-            item.imageUrl
-              ? {
-                  backgroundImage: `url(${item.imageUrl})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: `${item.imagePosition?.x || 50}% ${
-                    item.imagePosition?.y || 50
-                  }%`,
-                }
-              : {}
-          "
-          @click="
-            editingImageId === item.idList ? finishImageEdit($event) : null
-          "
-          @mousemove="updateImagePosition(item, $event)"
-          :class="{ 'editing-image': editingImageId === item.idList }"
-          :aria-label="`Task background for ${item.titleList}`"
-          tabindex="0"
-        >
-          <span class="chip" :data-priority="item.priorityList">{{
-            item.priorityList
-          }}</span>
-          <span class="due">Due: {{ item.dueDateList }}</span>
-
-          <button
-            class="check"
-            :class="{ on: item.stateList }"
-            aria-label="Mark done"
-            @click.stop="toggle(item)"
-          >
-            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-              <path
-                d="M20 6L9 17l-5-5"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="3"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </button>
-
-          <!-- Image Control Toolbar -->
-          <div class="image-controls" v-if="editingImageId !== item.idList">
-            <button
-              class="img-btn add-img"
-              title="Add/Change image"
-              @click.stop="openGallery(item)"
-            >
-              <svg viewBox="0 0 24 24" width="14" height="14">
+            <template #body
+              ><svg viewBox="0 0 24 24" width="14" height="14">
                 <rect
-                  x="3"
-                  y="3"
-                  width="18"
-                  height="18"
+                  x="9"
+                  y="9"
+                  width="13"
+                  height="13"
                   rx="2"
                   ry="2"
                   stroke="currentColor"
                   stroke-width="2"
                   fill="none"
                 />
-                <circle
-                  cx="8.5"
-                  cy="8.5"
-                  r="1.5"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  fill="none"
-                />
                 <path
-                  d="M21 15l-5-5L5 21"
+                  d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
                   stroke="currentColor"
                   stroke-width="2"
                   fill="none"
                 />
               </svg>
-            </button>
-
-            <button
-              v-if="item.imageUrl"
-              class="img-btn remove-img"
-              title="Remove image"
-              @click.stop="removeImage(item)"
-            >
-              <svg viewBox="0 0 24 24" width="14" height="14">
+            </template>
+          </Button>
+          <Button @click.stop="deleteTodo(item, $event)" title="Delete task">
+            <template #body
+              ><svg viewBox="0 0 24 24" width="14" height="14">
                 <path
-                  d="M18 6L6 18M6 6l12 12"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                />
-              </svg>
-            </button>
-
-            <button
-              v-if="item.imageUrl"
-              class="img-btn reposition-img"
-              title="Adjust position"
-              @click.stop="startImageEdit(item, $event)"
-            >
-              <svg viewBox="0 0 24 24" width="14" height="14">
-                <path
-                  d="M12 2l3 3-3 3M2 12l3-3 3 3M12 22l-3-3 3-3M22 12l-3 3-3-3"
+                  d="M3 6h18m-2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"
                   stroke="currentColor"
                   stroke-width="2"
                   fill="none"
                 />
               </svg>
-            </button>
-          </div>
+            </template>
+          </Button>
+        </div>
 
-          <!-- Editing overlay -->
-          <div v-if="editingImageId === item.idList" class="edit-overlay">
-            <span class="edit-hint"
-              >Move cursor to reposition • Click to finish</span
-            >
-            <div class="crosshair"></div>
+        <div
+          class="relative h-40 cursor-pointer"
+          :style="
+            item.imageSrcLinkList
+              ? {
+                  backgroundImage: `url(${item.imageSrcLinkList})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: `${item.imagePosition?.x || 50}% ${
+                    item.imagePosition?.y || 50
+                  }%`,
+                }
+              : { background: 'linear-gradient(135deg, #1e3c72, #2a5298)' }
+          "
+          :aria-label="`Task background for ${item.titleList}`"
+          tabindex="0"
+        >
+          <Pill
+            class="absolute !top-3 !left-3 group-hover:opacity-0 transition-opacity"
+            :text="item.priorityList"
+            :priority="item.priorityList"
+          ></Pill>
+
+          <span class="absolute bottom-3 left-3 text-xs text-(--pill-fg)"
+            >Due: {{ item.dueDateList }}</span
+          >
+
+          <!-- Image Control Toolbar -->
+          <div
+            class="absolute bottom-3 right-3 opacity-0 transition-opacity group-hover:!opacity-100"
+            v-if="editingImageId !== item.idList"
+          >
+            <Button title="Add/Change image" @click.stop="openGallery(item)">
+              <template #body
+                ><svg viewBox="0 0 24 24" width="14" height="14">
+                  <rect
+                    x="3"
+                    y="3"
+                    width="18"
+                    height="18"
+                    rx="2"
+                    ry="2"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    fill="none"
+                  />
+                  <circle
+                    cx="8.5"
+                    cy="8.5"
+                    r="1.5"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    fill="none"
+                  />
+                  <path
+                    d="M21 15l-5-5L5 21"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    fill="none"
+                  />
+                </svg>
+              </template>
+            </Button>
           </div>
         </div>
 
-        <div class="label">
-          <div class="title" :class="{ done: item.stateList }">
+        <div
+          class="bg-[linear-gradient(180deg,#2b2f4d,#242743)] px-4 py-4 text-center"
+        >
+          <h5
+            class="!font-bold whitespace-nowrap overflow-hidden overflow-ellipsis"
+            :class="{ done: item.stateList }"
+          >
             {{ item.titleList }}
-          </div>
-          <div class="tag">{{ item.descriptionList }}</div>
+          </h5>
+          <p class="mb-0 text-xs text-(--pill-fg)">
+            {{ item.descriptionList }}
+          </p>
         </div>
       </article>
     </div>
 
     <!-- Calendar View -->
-    <div v-else-if="viewMode === 'calendar'" class="calendar-view">
-      <Calendar :tasks="items" @open-task-detail="openTaskDetail" />
+    <div
+      v-else-if="viewMode === 'calendar'"
+      class="max-w-6xl !mx-auto calendar-view"
+    >
+      <Calendar :lists="items" @open-task-detail="openTaskDetail" />
     </div>
 
     <!-- Image Gallery Modal -->
@@ -2193,7 +1925,6 @@ export default {
 
 /* Card Controls */
 .card-controls {
-  position: absolute;
   top: 8px;
   left: 8px;
   display: flex;

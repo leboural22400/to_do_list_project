@@ -1,10 +1,16 @@
 ﻿<script>
+import { getAllTaskByListID } from "@/middleware/taskService.js";
+import { getListByID, updateList } from "@/middleware/listService.js";
+import { updateTask } from "@/middleware/taskService.js";
+import { createNewTask } from "@/middleware/taskService.js";
+import { destroyTask } from "@/middleware/taskService.js";
+
 import Button from "@/components/Button.vue";
 import Pill from "@/components/Pill.vue";
 import Card from "@/components/Card.vue";
 import Checkbox from "@/components/Checkbox.vue";
+import Input from "@/components/Input.vue";
 
-import { TaskDataService } from "../services/taskDataService.js";
 import UnsplashImages from "../components/UnsplashImages/UnsplashImages.vue";
 import { useToast } from "vue-toastification";
 
@@ -16,6 +22,7 @@ export default {
     Pill,
     Card,
     Checkbox,
+    Input,
   },
   setup() {
     const toast = useToast();
@@ -43,9 +50,9 @@ export default {
   },
   computed: {
     backgroundStyle() {
-      if (this.task?.imageUrl) {
+      if (this.task?.imageSrcLinkList) {
         return {
-          backgroundImage: `url(${this.task.imageUrl})`,
+          backgroundImage: `url(${this.task.imageSrcLinkList})`,
           backgroundSize: "cover",
           backgroundPosition: `${this.task.imagePosition?.x || 50}% ${
             this.task.imagePosition?.y || 50
@@ -57,198 +64,34 @@ export default {
       };
     },
     completedCount() {
-      return this.todoItems.filter((item) => item.completed).length;
+      return this.todoItems.filter((item) => item.stateTask === 2).length;
     },
     progressPercentage() {
       if (this.todoItems.length === 0) return 0;
       return Math.round((this.completedCount / this.todoItems.length) * 100);
     },
   },
-  created() {
-    // Take the ID from route parameters
-    const taskId = parseInt(this.$route.params.id);
-    this.task = TaskDataService.getTaskById(taskId);
-    this.todoItems = this.getTaskSpecificItems(taskId);
-
-    // Redirect if task not found
-    if (!this.task) {
-      this.$router.push("/not-found");
-    }
-  },
   watch: {
     "$route.params.id"(newId) {
       // Update task and items when route ID changes
-      const taskId = parseInt(newId);
-      this.task = TaskDataService.getTaskById(taskId);
-      this.todoItems = this.getTaskSpecificItems(taskId);
-
-      if (!this.task) {
-        this.$router.push("/not-found");
-      }
     },
   },
   methods: {
-    getTaskSpecificItems(taskId) {
-      const taskItems = {
-        1: [
-          // "Use Git and GitHub"
-          {
-            id: 1,
-            title: "Set up Git repository",
-            description:
-              "Initialize a new Git repository and connect to GitHub",
-            tags: ["setup", "git"],
-            completed: true,
-          },
-          {
-            id: 2,
-            title: "Learn basic Git commands",
-            description: "Master add, commit, push, pull commands",
-            tags: ["commands", "basics"],
-            completed: false,
-          },
-          {
-            id: 3,
-            title: "Understand branching",
-            description: "Learn how to create and merge branches",
-            tags: ["branching", "workflow"],
-            completed: false,
-          },
-          {
-            id: 4,
-            title: "Practice with pull requests",
-            description: "Create and review pull requests on GitHub",
-            tags: ["github", "collaboration"],
-            completed: false,
-          },
-        ],
-        2: [
-          // "Submit C Lab"
-          {
-            id: 1,
-            title: "Review lab requirements",
-            description:
-              "Read through all the lab specifications and requirements",
-            tags: ["preparation", "requirements"],
-            completed: false,
-          },
-          {
-            id: 2,
-            title: "Code the main functions",
-            description:
-              "Implement the core functionality required for the lab",
-            tags: ["coding", "implementation"],
-            completed: false,
-          },
-          {
-            id: 3,
-            title: "Test and debug",
-            description: "Test all functions and fix any bugs found",
-            tags: ["testing", "debugging"],
-            completed: false,
-          },
-          {
-            id: 4,
-            title: "Write documentation",
-            description: "Document the code and create submission report",
-            tags: ["documentation", "report"],
-            completed: false,
-          },
-        ],
-        3: [
-          // "Review binary systems"
-          {
-            id: 1,
-            title: "Binary number representation",
-            description: "Understand how binary numbers work and conversions",
-            tags: ["theory", "conversion"],
-            completed: false,
-          },
-          {
-            id: 2,
-            title: "Boolean algebra basics",
-            description: "Learn AND, OR, NOT operations and truth tables",
-            tags: ["boolean", "operations"],
-            completed: false,
-          },
-          {
-            id: 3,
-            title: "Practice exercises",
-            description: "Solve binary arithmetic and logic problems",
-            tags: ["practice", "exercises"],
-            completed: false,
-          },
-        ],
-        4: [
-          // "Fix linked list"
-          {
-            id: 1,
-            title: "Identify the bug",
-            description:
-              "Debug and find the issue in the linked list implementation",
-            tags: ["debugging", "analysis"],
-            completed: true,
-          },
-          {
-            id: 2,
-            title: "Implement fix",
-            description: "Apply the necessary code changes to fix the issue",
-            tags: ["implementation", "fix"],
-            completed: true,
-          },
-          {
-            id: 3,
-            title: "Test the solution",
-            description:
-              "Verify that the linked list works correctly after the fix",
-            tags: ["testing", "verification"],
-            completed: true,
-          },
-        ],
-        5: [
-          // "Prepare democracy slides"
-          {
-            id: 1,
-            title: "Research democratic principles",
-            description: "Gather information about key democratic concepts",
-            tags: ["research", "theory"],
-            completed: false,
-          },
-          {
-            id: 2,
-            title: "Create slide outline",
-            description: "Structure the presentation with main topics",
-            tags: ["planning", "structure"],
-            completed: false,
-          },
-          {
-            id: 3,
-            title: "Design slides",
-            description: "Create visually appealing slides with content",
-            tags: ["design", "creation"],
-            completed: false,
-          },
-        ],
-      };
-
-      // Return items for the given task ID
-      return taskItems[taskId] || [];
+    async getTasks() {
+      try {
+        this.todoItems = await getAllTaskByListID(this.$route.params.id);
+      } catch (err) {
+        console.log(err);
+      }
     },
 
-    getSectionTitle() {
-      const titles = {
-        1: "Git & GitHub Learning Plan",
-        2: "C Lab Submission Steps",
-        3: "Binary Systems Study Plan",
-        4: "Linked List Fix Tasks",
-        5: "Democracy Presentation Plan",
-        6: "Probability Math Exercises",
-        7: "Docker App Containerization",
-        8: "REST API Learning Path",
-        9: "Algorithm Review Sessions",
-        10: "Programming Practice",
-      };
-      return titles[this.task?.id] || "Task Plan";
+    async getList() {
+      try {
+        this.task = await getListByID(this.$route.params.id);
+      } catch (err) {
+        console.log(err);
+        this.$router.push("/not-found");
+      }
     },
 
     goBack() {
@@ -294,21 +137,29 @@ export default {
         typeof photo === "string"
           ? photo
           : photo?.urls?.regular || photo?.urls?.small || "";
-      TaskDataService.updateTaskImage(this.gallery.forItemId, imageUrl);
-      this.toast.success("Image mise à jour!");
-      this.closeGallery();
+      updateList({ imageSrcLinkList: imageUrl }, this.$route.params.id).then(
+        () => {
+          this.closeGallery();
+          location.reload();
+        }
+      );
     },
 
     selectDefault(url) {
       this.selectImage(url);
     },
 
-    toggleItem(id) {
-      console.log(id);
-      const item = this.todoItems.find((item) => item.id === id);
-      if (item) {
-        item.completed = !item.completed;
-      }
+    async toggleTask(task) {
+      console.log(task.stateTask);
+      await updateTask(
+        { stateTask: task.stateTask < 2 ? task.stateTask + 1 : 0 },
+        task.idTask
+      ).then(async () => {
+        await updateList(
+          { stateList: this.progressPercentage == 100 },
+          this.$route.params.id
+        );
+      });
     },
 
     openAddModal() {
@@ -321,74 +172,68 @@ export default {
       };
     },
 
-    editItem(item) {
+    editTask(task) {
       this.itemModal.mode = "edit";
-      this.itemModal.editingId = item.id;
+      this.itemModal.editingId = task.idTask;
       this.itemModal.open = true;
       this.itemModal.form = {
-        title: item.title,
-        description: item.description || "",
-        tagsText: (item.tags || []).join(", "),
+        title: task.titleTask,
+        description: task.descriptionTask || "",
+        tagsText: (JSON.parse(task.tagsTask) || []).join(", "),
       };
     },
 
     closeItemModal() {
       this.itemModal.open = false;
       this.itemModal.editingId = null;
+      location.reload();
     },
 
-    saveItem() {
+    async saveItem() {
       const form = this.itemModal.form;
       if (!form.title.trim()) return;
 
       const itemData = {
-        title: form.title.trim(),
-        description: form.description.trim(),
-        tags: form.tagsText
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean),
-        completed: false,
+        titleTask: form.title.trim(),
+        descriptionTask: form.description.trim(),
+        tagsTask: JSON.stringify(
+          form.tagsText
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter(Boolean)
+        ),
+        stateTask: false,
+        dueDateTast: "2025-12-31",
+        idList: this.$route.params.id,
       };
 
       if (this.itemModal.mode === "create") {
-        const maxId = Math.max(...this.todoItems.map((item) => item.id), 0);
-        this.todoItems.push({
-          id: maxId + 1,
-          ...itemData,
-        });
+        await createNewTask(itemData).then(() => this.closeItemModal());
       } else {
-        const item = this.todoItems.find(
-          (item) => item.id === this.itemModal.editingId
+        updateTask(itemData, this.itemModal.editingId).then(() =>
+          this.closeItemModal()
         );
-        if (item) {
-          Object.assign(item, itemData);
-        }
-      }
-
-      this.closeItemModal();
-    },
-
-    deleteItem(id) {
-      const index = this.todoItems.findIndex((item) => item.id === id);
-      if (index > -1) {
-        this.todoItems.splice(index, 1);
       }
     },
+
+    async deleteTask(task) {
+      await destroyTask(task.idTask).then(() => location.reload());
+    },
+  },
+  mounted() {
+    this.getTasks();
+    this.getList();
   },
 };
 </script>
 
 <template>
   <main class="min-h-lvh bg-(--page-bg)" v-if="task">
-    <header
-      class="h-80 !flex !items-center bg-(--surface)"
-      :style="backgroundStyle"
-    >
+    <header class="h-80 !flex !items-center" :style="backgroundStyle">
       <section
         class="w-full max-w-6xl !flex !items-center justify-center mx-auto"
       >
-        <Button @click="goBack">
+        <Button @click="goBack" :basicpadd="true" :paddx="true">
           <template #body
             ><svg viewBox="0 0 24 24" width="20" height="20" class="!mr-2">
               <path
@@ -404,16 +249,21 @@ export default {
         </Button>
         <main class="text-center flex-1">
           <h1 class="!text-(--fg) !font-extrabold mb-3">
-            {{ task.title }}
+            {{ task.titleList }}
           </h1>
           <section class="flex justify-center gap-4 flex-wrap">
-            <Pill :text="task.tag" />
-            <Pill :text="'Due: ' + task.due" />
-            <Pill :text="task.priority" :priority="task.priority" />
+            <Pill :text="task.descriptionList" />
+            <Pill :text="'Due: ' + task.dueDateList" />
+            <Pill :text="task.priorityList" :priority="task.priorityList" />
           </section>
         </main>
 
-        <Button @click="openImageGallery" title="Change background">
+        <Button
+          @click="openImageGallery"
+          title="Change background"
+          :basicpadd="true"
+          :paddx="true"
+        >
           <template #body
             ><svg viewBox="0 0 24 24" width="18" height="18">
               <rect
@@ -450,8 +300,14 @@ export default {
     <!-- Content Section -->
     <main class="!py-10 !px-6 !max-w-6xl mx-auto">
       <header class="flex justify-between items-center !mb-6">
-        <h2 class="!font-bold !text-(--fg) m-0">{{ getSectionTitle() }}</h2>
-        <Button variant="secondary" @click="openAddModal" :fill="true">
+        <h2 class="!font-bold !text-(--fg) m-0">{{ task.descriptionList }}</h2>
+        <Button
+          variant="secondary"
+          @click="openAddModal"
+          :fill="true"
+          :basicpadd="true"
+          :paddx="true"
+        >
           <template #body
             ><svg viewBox="0 0 24 24" width="16" height="16">
               <path
@@ -477,21 +333,25 @@ export default {
           <template #main>
             <section class="flex !flex-1 gap-4">
               <Checkbox
+                @click="toggleTask(item)"
                 class="!w-6 !h-6"
-                v-model="item.completed"
+                v-model="item.stateTask"
                 customclass="!w-6 !h-6 after:!w-2 after:!h-3 after:!left-[6px]"
               ></Checkbox>
 
               <main class="">
                 <h5 class="!font-semibold !text-(--fg)">
-                  {{ item.title }}
+                  {{ item.titleTask }}
                 </h5>
-                <p class="text-sm text-(--muted)" v-if="item.description">
-                  {{ item.description }}
+                <p class="text-sm text-(--muted)" v-if="item.descriptionTask">
+                  {{ item.descriptionTask }}
                 </p>
-                <div class="flex gap-2 flex-wrap" v-if="item.tags?.length">
+                <div
+                  class="flex gap-2 flex-wrap"
+                  v-if="JSON.parse(item.tagsTask).length"
+                >
                   <Pill
-                    v-for="tag in item.tags"
+                    v-for="tag in JSON.parse(item.tagsTask)"
                     :key="tag"
                     :text="tag"
                     color="secondary"
@@ -506,8 +366,10 @@ export default {
               <Button
                 :nopadd="true"
                 variant="secondary"
-                @click="editItem(item)"
+                @click="editTask(item)"
                 title="Edit"
+                :basicpadd="true"
+                :paddx="true"
               >
                 <template #body
                   ><svg viewBox="0 0 24 24" width="14" height="14">
@@ -529,8 +391,10 @@ export default {
               <Button
                 :nopadd="true"
                 variant="alert"
-                @click="deleteItem(item.id)"
+                @click="deleteTask(item)"
                 title="Delete"
+                :basicpadd="true"
+                :paddx="true"
               >
                 <template #body
                   ><svg viewBox="0 0 24 24" width="14" height="14">
@@ -558,6 +422,8 @@ export default {
             :fill="true"
             text="Add Your First Item"
             @click="openAddModal"
+            :basicpadd="true"
+            :paddx="true"
           ></Button>
         </div>
       </main>
@@ -585,60 +451,64 @@ export default {
     <!-- Add/Edit Item Modal -->
     <div
       v-if="itemModal.open"
-      class="modal-backdrop"
+      class="fixed inset-0 bg-black/60 z-50 p-5 flex !items-center !justify-center"
       @click.self="closeItemModal"
     >
-      <div class="item-modal">
-        <header class="modal-head">
-          <h2>
+      <Card :header="true" class="min-w-[500px]">
+        <template #header
+          ><h5 class="!mb-0">
             {{ itemModal.mode === "create" ? "Add New Item" : "Edit Item" }}
-          </h2>
-          <button class="close" @click="closeItemModal">✕</button>
-        </header>
-
-        <form @submit.prevent="saveItem" class="item-form">
-          <div class="form-group">
-            <label for="itemTitle">Title *</label>
-            <input
-              id="itemTitle"
+          </h5>
+          <button
+            class="bg-none border-none !text-xl cursor-pointer p-1"
+            @click="closeItemModal"
+          >
+            ✕
+          </button></template
+        >
+        <template #main
+          ><form @submit.prevent="saveItem">
+            <Input
+              textlabel="Title *"
+              class="mb-4"
               type="text"
-              v-model="itemModal.form.title"
               placeholder="e.g., Learn Git basics"
               required
-              autofocus
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="itemDesc">Description</label>
-            <textarea
-              id="itemDesc"
-              v-model="itemModal.form.description"
-              placeholder="Additional details..."
-              rows="3"
-            ></textarea>
-          </div>
-
-          <div class="form-group">
-            <label for="itemTags">Tags (comma separated)</label>
-            <input
-              id="itemTags"
+              v-model="itemModal.form.title"
+            ></Input>
+            <Input
+              textlabel="Description"
+              class="mb-4"
               type="text"
-              v-model="itemModal.form.tagsText"
+              placeholder="Additional details..."
+              v-model="itemModal.form.description"
+            ></Input>
+            <Input
+              textlabel="Tags (comma separated)"
+              class="mb-4"
+              type="text"
               placeholder="e.g., basics, tutorial, practice"
-            />
-          </div>
+              v-model="itemModal.form.tagsText"
+            ></Input>
 
-          <div class="form-actions">
-            <button type="button" class="btn-cancel" @click="closeItemModal">
-              Cancel
-            </button>
-            <button type="submit" class="btn-submit">
-              {{ itemModal.mode === "create" ? "Add Item" : "Update Item" }}
-            </button>
-          </div>
-        </form>
-      </div>
+            <div class="form-actions">
+              <Button
+                variant="alert"
+                text="Cancel"
+                @click="closeItemModal"
+                :basicpadd="true"
+                :paddx="true"
+              ></Button>
+              <Button
+                variant="secondary"
+                :fill="true"
+                :text="itemModal.mode === 'create' ? 'Add Item' : 'Update Item'"
+                :basicpadd="true"
+                :paddx="true"
+              ></Button>
+            </div></form
+        ></template>
+      </Card>
     </div>
 
     <!-- Image Gallery Modal -->
@@ -650,545 +520,3 @@ export default {
     />
   </main>
 </template>
-
-<style scoped lang="scss">
-.todo-detail-page {
-  min-height: 100vh;
-  background: #0f1525;
-  position: relative;
-  z-index: 1;
-}
-
-.header-section {
-  position: relative;
-  height: 300px;
-  display: flex;
-  align-items: center;
-  background: linear-gradient(135deg, #1e3c72, #2a5298);
-
-  &::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.4);
-  }
-}
-
-.header-overlay {
-  position: relative;
-  z-index: 2;
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 24px;
-  display: flex;
-  align-items: center;
-  gap: 24px;
-}
-
-.back-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-  color: white;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  backdrop-filter: blur(10px);
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: translateX(-2px);
-  }
-}
-
-.task-header {
-  flex: 1;
-  text-align: center;
-}
-
-.task-title {
-  font-size: clamp(24px, 4vw, 36px);
-  font-weight: 800;
-  color: white;
-  margin: 0 0 12px 0;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-}
-
-.task-meta {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.task-category,
-.task-due,
-.task-priority {
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
-  backdrop-filter: blur(10px);
-}
-
-.task-priority {
-  text-transform: uppercase;
-
-  &[data-priority="high"] {
-    background: rgba(255, 86, 86, 0.3);
-    border-color: rgba(255, 86, 86, 0.5);
-  }
-
-  &[data-priority="medium"] {
-    background: rgba(255, 195, 0, 0.3);
-    border-color: rgba(255, 195, 0, 0.5);
-  }
-
-  &[data-priority="low"] {
-    background: rgba(0, 255, 170, 0.3);
-    border-color: rgba(0, 255, 170, 0.5);
-  }
-}
-
-.edit-bg-btn {
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-  color: white;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  backdrop-filter: blur(10px);
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.2);
-  }
-}
-
-.content-section {
-  padding: 40px 24px;
-}
-
-.todo-container {
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-
-  h2 {
-    font-size: 28px;
-    font-weight: 700;
-    color: #e9edf8;
-    margin: 0;
-  }
-}
-
-.add-item-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: linear-gradient(
-    135deg,
-    rgba(0, 180, 255, 0.2),
-    rgba(0, 140, 255, 0.15)
-  );
-  border: 1px solid rgba(0, 180, 255, 0.3);
-  border-radius: 10px;
-  color: #00b4ff;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background: linear-gradient(
-      135deg,
-      rgba(0, 180, 255, 0.3),
-      rgba(0, 140, 255, 0.2)
-    );
-    transform: translateY(-1px);
-  }
-}
-
-.todo-items {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin-bottom: 32px;
-}
-
-.todo-item {
-  background: #1a2035;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  transition: all 0.2s ease;
-
-  &:hover {
-    border-color: rgba(255, 255, 255, 0.12);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  }
-
-  &.completed {
-    opacity: 0.7;
-
-    .item-title {
-      text-decoration: line-through;
-      color: #a9ffcf;
-    }
-  }
-}
-
-.item-content {
-  display: flex;
-  gap: 16px;
-  flex: 1;
-}
-
-.check-btn {
-  width: 24px;
-  height: 24px;
-  border-radius: 8px;
-  border: 2px solid rgba(0, 180, 255, 0.3);
-  background: transparent;
-  color: transparent;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-  margin-top: 2px;
-
-  &:hover {
-    border-color: rgba(0, 180, 255, 0.5);
-  }
-
-  &.checked {
-    background: linear-gradient(135deg, #00b4ff, #0080cc);
-    border-color: #00b4ff;
-    color: white;
-  }
-}
-
-.item-details {
-  flex: 1;
-}
-
-.item-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #e9edf8;
-  margin: 0 0 8px 0;
-}
-
-.item-description {
-  font-size: 14px;
-  color: #a8b3d4;
-  margin: 0 0 12px 0;
-  line-height: 1.5;
-}
-
-.item-tags {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.tag {
-  padding: 2px 8px;
-  background: rgba(0, 180, 255, 0.1);
-  border: 1px solid rgba(0, 180, 255, 0.2);
-  border-radius: 12px;
-  font-size: 12px;
-  color: #00b4ff;
-}
-
-.item-actions {
-  display: flex;
-  gap: 8px;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.todo-item:hover .item-actions {
-  opacity: 1;
-}
-
-.action-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.3);
-  color: #e9edf8;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &.edit:hover {
-    background: rgba(0, 180, 255, 0.2);
-    border-color: rgba(0, 180, 255, 0.3);
-    color: #00b4ff;
-  }
-
-  &.delete:hover {
-    background: rgba(255, 86, 86, 0.2);
-    border-color: rgba(255, 86, 86, 0.3);
-    color: #ff5656;
-  }
-}
-
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: #a8b3d4;
-}
-
-.empty-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-}
-
-.empty-state h3 {
-  font-size: 24px;
-  margin: 0 0 8px 0;
-  color: #e9edf8;
-}
-
-.empty-state p {
-  margin: 0 0 24px 0;
-}
-
-.add-first-btn {
-  padding: 12px 24px;
-  background: linear-gradient(
-    135deg,
-    rgba(0, 180, 255, 0.2),
-    rgba(0, 140, 255, 0.15)
-  );
-  border: 1px solid rgba(0, 180, 255, 0.3);
-  border-radius: 10px;
-  color: #00b4ff;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background: linear-gradient(
-      135deg,
-      rgba(0, 180, 255, 0.3),
-      rgba(0, 140, 255, 0.2)
-    );
-  }
-}
-
-.progress-section {
-  background: #1a2035;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 24px;
-
-  h3 {
-    font-size: 20px;
-    color: #e9edf8;
-    margin: 0 0 16px 0;
-  }
-}
-
-.progress-bar {
-  height: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  overflow: hidden;
-  margin-bottom: 12px;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #00b4ff, #0080cc);
-  border-radius: 4px;
-  transition: width 0.3s ease;
-}
-
-.progress-text {
-  font-size: 14px;
-  color: #a8b3d4;
-  margin: 0;
-}
-
-/* Modal Styles */
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-}
-
-.item-modal {
-  width: min(500px, 100%);
-  background: #14192b;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
-  overflow: hidden;
-  position: relative;
-  z-index: 1101;
-}
-
-.modal-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 20px;
-  background: #1b2240;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-
-  h2 {
-    margin: 0;
-    font-size: 18px;
-    color: #cfe9ff;
-  }
-}
-
-.close {
-  background: none;
-  border: none;
-  color: #cfe9ff;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 4px;
-}
-
-.item-form {
-  padding: 24px;
-}
-
-.form-group {
-  margin-bottom: 20px;
-
-  label {
-    display: block;
-    margin-bottom: 6px;
-    font-size: 14px;
-    font-weight: 600;
-    color: #cfe9ff;
-  }
-
-  input,
-  textarea {
-    width: 100%;
-    padding: 10px 12px;
-    background: #0f1525;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 8px;
-    color: #e9edf8;
-    font-size: 14px;
-    transition: border-color 0.2s ease;
-
-    &:focus {
-      outline: none;
-      border-color: rgba(0, 180, 255, 0.4);
-    }
-
-    &::placeholder {
-      color: #7a8ba0;
-    }
-  }
-
-  textarea {
-    resize: vertical;
-    font-family: inherit;
-  }
-}
-
-.form-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-}
-
-.btn-cancel,
-.btn-submit {
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-cancel {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #e9edf8;
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.05);
-  }
-}
-
-.btn-submit {
-  background: linear-gradient(
-    135deg,
-    rgba(0, 180, 255, 0.2),
-    rgba(0, 140, 255, 0.15)
-  );
-  border: 1px solid rgba(0, 180, 255, 0.3);
-  color: #00b4ff;
-
-  &:hover {
-    background: linear-gradient(
-      135deg,
-      rgba(0, 180, 255, 0.3),
-      rgba(0, 140, 255, 0.2)
-    );
-  }
-}
-
-@media (max-width: 768px) {
-  .header-overlay {
-    flex-direction: column;
-    gap: 16px;
-    text-align: center;
-  }
-
-  .task-meta {
-    gap: 12px;
-  }
-
-  .section-header {
-    flex-direction: column;
-    gap: 16px;
-    align-items: stretch;
-  }
-
-  .todo-item {
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .item-actions {
-    opacity: 1;
-    justify-content: flex-end;
-  }
-}
-</style>

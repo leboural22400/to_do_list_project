@@ -16,7 +16,7 @@ import Button from "@/components/Button.vue";
       Oops... the page you are looking for doesn’t exist.
     </p>
     <router-link to="/" class="!no-underline">
-      <Button text="Back to Home" />
+      <Button text="Back to Home" :basicpadd="true" :paddx="true" />
     </router-link>
   </div>
 </template>

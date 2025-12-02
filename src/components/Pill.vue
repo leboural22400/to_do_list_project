@@ -1,10 +1,13 @@
 <template>
   <span
-    class="pill"
+    class="py-1 px-3 rounded-2xl text-sm bg-black/10 border border-black/10 text-(--fg) backdrop-blur-md uppercase"
     :class="{
-      high: priority == 'high',
-      medium: priority == 'medium',
-      low: priority == 'low',
+      '!bg-(--alert)/30 !border-(--alert)/30 !font-semibold':
+        priority == 'high',
+      '!bg-(--warning)/30 !border-(--warning)/30 !font-semibold':
+        priority == 'medium',
+      '!bg-(--success)/30 !border-(--success)/30 !font-semibold':
+        priority == 'low',
       '!bg-(--secondary)/30 !border-(--secondary)/50': color == 'secondary',
     }"
   >
@@ -18,35 +21,3 @@ export default {
   props: ["priority", "text", "color"],
 };
 </script>
-
-<style lang="scss">
-.pill {
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 14px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
-  backdrop-filter: blur(10px);
-}
-.high {
-  background: rgba(255, 86, 86, 0.3);
-  border-color: rgba(255, 86, 86, 0.5);
-  text-transform: uppercase;
-  font-weight: 600;
-}
-
-.medium {
-  background: rgba(255, 195, 0, 0.3);
-  border-color: rgba(255, 195, 0, 0.5);
-  text-transform: uppercase;
-  font-weight: 600;
-}
-
-.low {
-  background: rgba(0, 255, 170, 0.3);
-  border-color: rgba(0, 255, 170, 0.5);
-  text-transform: uppercase;
-  font-weight: 600;
-}
-</style>

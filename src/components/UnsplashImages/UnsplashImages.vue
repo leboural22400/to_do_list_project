@@ -9,7 +9,7 @@ const props = defineProps({
         type: Boolean,
         default: false
     }
-}); 
+});
 
 const emit = defineEmits(['selectDefault', 'selectImage', 'close']);
 
@@ -101,15 +101,15 @@ const searchUnsplash = async () => {
         const res = await fetch(url, {
             headers: { Authorization: `Client-ID ${import.meta.env.VITE_UNSPLASH_ACCESS_KEY}` }
         });
-        
+
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        
+
         spendQuota();
         memoryCache.set(cacheKey, data.results);
         gallery.value.results = data.results;
         useDefaults.value = false;
-        
+
         toast.success(`Found ${data.results.length} images for "${q}"`);
     } catch (err) {
         console.error('Unsplash search error:', err);
@@ -136,15 +136,15 @@ const randomUnsplash = async () => {
         const res = await fetch(url, {
             headers: { Authorization: `Client-ID ${import.meta.env.VITE_UNSPLASH_ACCESS_KEY}` }
         });
-        
+
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        
+
         spendQuota();
         memoryCache.set(cacheKey, data);
         gallery.value.results = data;
         useDefaults.value = false;
-        
+
         toast.success('Random images loaded!');
     } catch (err) {
         console.error('Unsplash random error:', err);
@@ -156,7 +156,7 @@ const randomUnsplash = async () => {
 
 const copyLink = async () => {
     const imageLink = gallery.value.imageLink;
-    
+
     if (!imageLink) {
         toast.error('No image URL entered.');
         return;
@@ -345,378 +345,418 @@ const imageCategories = [
 </script>
 
 <template>
-    <!-- Modal Backdrop -->
-    <div v-if="open" class="modal-backdrop" @click.self="handleClose">
-        <div class="modal">
-            <header class="modal-head">
-                <h2>Unsplash</h2>
-                <button class="close" @click="handleClose">✕</button>
-            </header>
+  <!-- Modal Backdrop -->
+  <div v-if="open" class="modal-backdrop" @click.self="handleClose">
+    <div class="modal">
+      <header class="modal-head">
+        <h2>Unsplash</h2>
+        <button class="close" @click="handleClose">✕</button>
+      </header>
 
-            <div class="toolbar">
-                <div class="toolbar-row">
-                    <input type="text" v-model.trim="gallery.query" placeholder="Search (e.g.: city, cats, neon)"
-                        @keyup.enter="searchUnsplash" />
-                    <button @click="searchUnsplash" :disabled="loading || !canSpend()">Search</button>
-                    <button @click="randomUnsplash" :disabled="loading || !canSpend()">Random</button>
-                </div>
-
-                <div class="toolbar-row">
-                    <input type="text" v-model.trim="gallery.imageLink" placeholder="Paste image URL"
-                        @keyup.enter="copyLink" />
-                    <button @click="copyLink" :disabled="loading || !canSpend()">Link</button>
-                    <button @click="uploadImage" :disabled="loading || !canSpend()">Upload</button>
-                </div>
-
-                <div class="toolbar-row">
-                    <label class="opt">
-                        <span>Orientation</span>
-                        <select v-model="gallery.orientation">
-                            <option value="">Any</option>
-                            <option value="landscape">Landscape</option>
-                            <option value="portrait">Portrait</option>
-                            <option value="squarish">Squarish</option>
-                        </select>
-                    </label>
-
-                    <small class="quota-info">
-                        Quota: {{ quota.remaining }}/{{ quota.limit }} / h
-                    </small>
-                </div>
-            </div>
-
-            <!-- Default images: zero API calls -->
-            <div class="results" :class="{ loading }" v-if="useDefaults">
-                <template v-for="category in imageCategories" :key="category.title">
-                    <div class="section-title">{{ category.title }}</div>
-                    <div class="section-grid">
-                        <div v-for="(url, i) in defaultImagePool.slice(category.start, category.end)" :key="i + category.start"
-                            class="result" @click="handleSelectDefault(url)" :title="category.title.toLowerCase()">
-                            <img :src="url" :alt="category.title.toLowerCase()" loading="lazy" />
-                            <div class="credit">{{ category.credit }}</div>
-                        </div>
-                    </div>
-                </template>
-            </div>
-
-            <!-- Unsplash results: only after explicit action -->
-            <div class="results" :class="{ loading }" v-else>
-                <div v-for="photo in gallery.results" :key="photo.id" class="result" @click="handleSelectImage(photo)"
-                    :title="`Photo by ${photo.user?.name || 'Unknown'}`">
-                    <img :src="photo.urls.small" :alt="photo.alt_description || 'Unsplash photo'" loading="lazy" />
-                    <div class="credit">{{ photo.user?.name || 'Unknown' }}</div>
-                </div>
-                <p v-if="!loading && gallery.results.length === 0" class="empty">No results for now.</p>
-            </div>
-
-            <footer class="modal-foot">
-                <small>Photos come from Unsplash.</small>
-            </footer>
+      <div class="toolbar">
+        <div class="toolbar-row">
+          <input
+            type="text"
+            v-model.trim="gallery.query"
+            placeholder="Search (e.g.: city, cats, neon)"
+            @keyup.enter="searchUnsplash"
+          />
+          <button @click="searchUnsplash" :disabled="loading || !canSpend()">
+            Search
+          </button>
+          <button @click="randomUnsplash" :disabled="loading || !canSpend()">
+            Random
+          </button>
         </div>
+
+        <div class="toolbar-row">
+          <input
+            type="text"
+            v-model.trim="gallery.imageLink"
+            placeholder="Paste image URL"
+            @keyup.enter="copyLink"
+          />
+          <button @click="copyLink" :disabled="loading || !canSpend()">
+            Link
+          </button>
+          <button @click="uploadImage" :disabled="loading || !canSpend()">
+            Upload
+          </button>
+        </div>
+
+        <div class="toolbar-row">
+          <label class="opt">
+            <span>Orientation</span>
+            <select v-model="gallery.orientation">
+              <option value="">Any</option>
+              <option value="landscape">Landscape</option>
+              <option value="portrait">Portrait</option>
+              <option value="squarish">Squarish</option>
+            </select>
+          </label>
+
+          <small class="quota-info">
+            Quota: {{ quota.remaining }}/{{ quota.limit }} / h
+          </small>
+        </div>
+      </div>
+
+      <!-- Default images: zero API calls -->
+      <div class="results" :class="{ loading }" v-if="useDefaults">
+        <template v-for="category in imageCategories" :key="category.title">
+          <div class="section-title">{{ category.title }}</div>
+          <div class="section-grid">
+            <div
+              v-for="(url, i) in defaultImagePool.slice(
+                category.start,
+                category.end
+              )"
+              :key="i + category.start"
+              class="result"
+              @click="handleSelectDefault(url)"
+              :title="category.title.toLowerCase()"
+            >
+              <img
+                :src="url"
+                :alt="category.title.toLowerCase()"
+                loading="lazy"
+              />
+              <div class="credit">{{ category.credit }}</div>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- Unsplash results: only after explicit action -->
+      <div class="results" :class="{ loading }" v-else>
+        <div
+          v-for="photo in gallery.results"
+          :key="photo.id"
+          class="result"
+          @click="handleSelectImage(photo)"
+          :title="`Photo by ${photo.user?.name || 'Unknown'}`"
+        >
+          <img
+            :src="photo.urls.small"
+            :alt="photo.alt_description || 'Unsplash photo'"
+            loading="lazy"
+          />
+          <div class="credit">{{ photo.user?.name || "Unknown" }}</div>
+        </div>
+        <p v-if="!loading && gallery.results.length === 0" class="empty">
+          No results for now.
+        </p>
+      </div>
+
+      <footer class="modal-foot">
+        <small>Photos come from Unsplash.</small>
+      </footer>
     </div>
+  </div>
 </template>
 
 <style scoped lang="scss">
 /* Modal */
 .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, .55);
-    display: grid;
-    place-items: center;
-    z-index: 1000;
-    padding: 8px;
+  width: 100%;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  justify-content: center;
+  place-items: center;
+  z-index: 1000;
+  padding: 8px;
 }
 
 .modal {
-    width: min(960px, 95vw);
-    max-height: 90vh;
-    background: #14192b;
-    border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, .08);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, .55);
-    display: grid;
-    grid-template-rows: auto auto 1fr auto;
-    overflow: hidden;
+  width: min(960px, 95vw);
+  max-height: 90vh;
+  background: #14192b;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  overflow: hidden;
 
-    // Reponsive for mobile
-    @media(max-width: 768px) {
-        width: 100%;
-        max-width: none;
-        max-height: 95dvh;
-        margin: 0;
-        border-radius: 12px;
-    }
+  // Reponsive for mobile
+  @media (max-width: 768px) {
+    width: 100%;
+    max-width: none;
+    max-height: 95dvh;
+    margin: 0;
+    border-radius: 12px;
+  }
 }
 
 .modal-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 14px;
-    background: #1b2240;
-    border-bottom: 1px solid rgba(255, 255, 255, .06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: #1b2240;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .modal-head h2 {
-    margin: 0;
-    font-size: 16px;
-    color: #cfe9ff;
+  margin: 0;
+  font-size: 16px;
+  color: #cfe9ff;
 }
 
 .close {
-    background: transparent;
-    border: none;
-    color: #cfe9ff;
-    font-size: 18px;
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 4px;
-    transition: background 0.2s ease;
+  background: transparent;
+  border: none;
+  color: #cfe9ff;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s ease;
 
-    &:hover {
-        background: rgba(255, 255, 255, 0.1);
-    }
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
 }
 
 .toolbar {
-    padding: 8px 12px;
-    background: #1a2137;
-    border-bottom: 1px solid rgba(255, 255, 255, .06);
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+  padding: 8px 12px;
+  background: #1a2137;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .toolbar-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .toolbar input {
-    flex: 1;
-    min-width: 140px;
-    padding: 6px 10px;
-    background: #0f1525;
-    border: 1px solid rgba(255, 255, 255, .12);
-    border-radius: 6px;
-    color: #e9edf8;
-    font-size: 13px;
+  flex: 1;
+  min-width: 140px;
+  padding: 6px 10px;
+  background: #0f1525;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  color: #e9edf8;
+  font-size: 13px;
 
-    &:focus {
-        outline: none;
-        border-color: rgba(0, 180, 255, .4);
-    }
+  &:focus {
+    outline: none;
+    border-color: rgba(0, 180, 255, 0.4);
+  }
 
-    &::placeholder {
-        color: #7a8ba0;
-    }
+  &::placeholder {
+    color: #7a8ba0;
+  }
 }
 
 .toolbar button {
-    padding: 6px 12px;
-    background: rgba(0, 180, 255, .15);
-    border: 1px solid rgba(0, 180, 255, .25);
-    border-radius: 6px;
-    color: #00b4ff;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    white-space: nowrap;
+  padding: 6px 12px;
+  background: rgba(0, 180, 255, 0.15);
+  border: 1px solid rgba(0, 180, 255, 0.25);
+  border-radius: 6px;
+  color: #00b4ff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
 
-    &:hover:not(:disabled) {
-        background: rgba(0, 180, 255, .25);
-        transform: translateY(-1px);
-    }
+  &:hover:not(:disabled) {
+    background: rgba(0, 180, 255, 0.25);
+    transform: translateY(-1px);
+  }
 
-    &:disabled {
-        opacity: .5;
-        cursor: not-allowed;
-        transform: none;
-    }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
 }
 
 .opt {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    color: #a8b3d4;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #a8b3d4;
 
-    span {
-        white-space: nowrap;
+  span {
+    white-space: nowrap;
+  }
+
+  select {
+    padding: 4px 6px;
+    background: #0f1525;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    color: #e9edf8;
+    font-size: 12px;
+    cursor: pointer;
+
+    &:focus {
+      outline: none;
+      border-color: rgba(0, 180, 255, 0.4);
     }
-
-    select {
-        padding: 4px 6px;
-        background: #0f1525;
-        border: 1px solid rgba(255, 255, 255, .12);
-        border-radius: 4px;
-        color: #e9edf8;
-        font-size: 12px;
-        cursor: pointer;
-
-        &:focus {
-            outline: none;
-            border-color: rgba(0, 180, 255, .4);
-        }
-    }
+  }
 }
 
 .quota-info {
-    font-size: 11px;
-    color: #7a8ba0;
-    margin-left: auto;
-    white-space: nowrap;
+  font-size: 11px;
+  color: #7a8ba0;
+  margin-left: auto;
+  white-space: nowrap;
 }
 
 .results {
-    padding: 8px;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 8px;
-    overflow: auto;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+  overflow: auto;
 
-    @media (max-width: 768px) {
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-        gap: 6px;
-    }
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 6px;
+  }
 
-    @media (max-width: 480px) {
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    }
+  @media (max-width: 480px) {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
 
-    /* Custom scrollbar for WebKit browsers */
-    &::-webkit-scrollbar {
-        width: 8px;
-    }
+  /* Custom scrollbar for WebKit browsers */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
 
-    &::-webkit-scrollbar-track {
-        background: rgba(15, 21, 37, 0.6);
-        border-radius: 4px;
-    }
+  &::-webkit-scrollbar-track {
+    background: rgba(15, 21, 37, 0.6);
+    border-radius: 4px;
+  }
 
-    &::-webkit-scrollbar-thumb {
-        background: linear-gradient(180deg, #2b4a6b, #1a3552);
-        border-radius: 4px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
+  &::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #2b4a6b, #1a3552);
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
 
-    &::-webkit-scrollbar-thumb:hover {
-        background: linear-gradient(180deg, #3a5a7b, #2a4562);
-    }
+  &::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #3a5a7b, #2a4562);
+  }
 
-    &::-webkit-scrollbar-thumb:active {
-        background: linear-gradient(180deg, #4a6a8b, #3a5572);
-    }
+  &::-webkit-scrollbar-thumb:active {
+    background: linear-gradient(180deg, #4a6a8b, #3a5572);
+  }
 
-    /* For Firefox */
-    scrollbar-width: thin;
-    scrollbar-color: #2b4a6b rgba(15, 21, 37, 0.6);
+  /* For Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: #2b4a6b rgba(15, 21, 37, 0.6);
 }
 
 .results.loading {
-    opacity: .7;
-    filter: saturate(.7);
-    pointer-events: none;
+  opacity: 0.7;
+  filter: saturate(0.7);
+  pointer-events: none;
 }
 
 .result {
-    position: relative;
-    border-radius: 8px;
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, .06);
-    background: #0e1426;
-    cursor: pointer;
-    transition: transform .12s ease, box-shadow .12s ease;
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #0e1426;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+
+  @media (max-width: 768px) {
+    border-radius: 6px;
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.44);
+  }
+
+  img {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+    display: block;
 
     @media (max-width: 768px) {
-        border-radius: 6px;
+      height: 80px;
     }
-
-    &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 22px rgba(0, 0, 0, .44);
-    }
-
-    img {
-        width: 100%;
-        height: 100px;
-        object-fit: cover;
-        display: block;
-
-        @media (max-width: 768px) {
-            height: 80px;
-        }
-    }
+  }
 }
 
 .credit {
-    position: absolute;
-    left: 8px;
-    bottom: 8px;
-    padding: 2px 6px;
-    font-size: 11px;
-    background: rgba(0, 0, 0, .45);
-    border: 1px solid rgba(255, 255, 255, .12);
-    border-radius: 999px;
-    color: #e8f3ff;
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 2px 6px;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  color: #e8f3ff;
 }
 
 .modal-foot {
-    padding: 10px 12px;
-    font-size: 12px;
-    color: #9fb4ff;
-    opacity: .9;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: #9fb4ff;
+  opacity: 0.9;
 }
 
 .section-title {
-    grid-column: 1 / -1;
-    font-size: 14px;
-    font-weight: 600;
-    color: #cfe9ff;
-    margin: 12px 0 6px 0;
-    padding-bottom: 6px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+  grid-column: 1 / -1;
+  font-size: 14px;
+  font-weight: 600;
+  color: #cfe9ff;
+  margin: 12px 0 6px 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 
-    @media (max-width: 768px) {
-        font-size: 12px;
-        margin: 8px 0 4px 0;
-    }
+  @media (max-width: 768px) {
+    font-size: 12px;
+    margin: 8px 0 4px 0;
+  }
 
-    &:first-child {
-        margin-top: 0;
-    }
+  &:first-child {
+    margin-top: 0;
+  }
 }
 
 .section-grid {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 8px;
-    margin-bottom: 8px;
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
 
-    @media (max-width: 768px) {
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-        gap: 6px;
-    }
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 6px;
+  }
 
-    @media (max-width: 480px) {
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    }
+  @media (max-width: 480px) {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
 }
 
 .empty {
-    grid-column: 1 / -1;
-    text-align: center;
-    color: #9fb4ff;
-    opacity: 0.7;
-    padding: 40px 20px;
-    font-style: italic;
+  grid-column: 1 / -1;
+  text-align: center;
+  color: #9fb4ff;
+  opacity: 0.7;
+  padding: 40px 20px;
+  font-style: italic;
 }
 </style>

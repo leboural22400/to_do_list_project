@@ -196,23 +196,8 @@ async function handleSignOut() {
           </svg>
         </button>
       </li>
-
-      <li class="home">
-        <RouterLink to="/" custom v-slot="{ href, navigate, isActive }">
-          <a
-            :href="href"
-            class="navlink"
-            :class="{ 'current-link': isActive }"
-            @click.prevent="
-              navigate();
-              closeSideBar();
-            "
-          >
-            Home
-          </a>
-        </RouterLink>
-      </li>
-
+    </ul>
+    <ul class="flex justify-between">
       <!-- Authenticated User Links -->
       <template v-if="isAuthenticated">
         <li>
@@ -230,7 +215,7 @@ async function handleSignOut() {
                 closeSideBar();
               "
             >
-              To-Do List
+              My Lists
             </a>
           </RouterLink>
         </li>
@@ -258,6 +243,21 @@ async function handleSignOut() {
 
       <!-- Guest User Links except  -->
       <template v-else>
+        <li class="home">
+          <RouterLink to="/" custom v-slot="{ href, navigate, isActive }">
+            <a
+              :href="href"
+              class="navlink"
+              :class="{ 'current-link': isActive }"
+              @click.prevent="
+                navigate();
+                closeSideBar();
+              "
+            >
+              Home
+            </a>
+          </RouterLink>
+        </li>
         <li>
           <RouterLink
             to="/account"

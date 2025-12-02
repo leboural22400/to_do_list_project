@@ -54,18 +54,9 @@ body {
   --focus: rgba(99, 102, 241, 0.5);
   --grid-color: rgba(255, 255, 255, 0.06);
   --link-hover: #e0e0e0;
-
-  /* Toast Notification */
-  --toast-fg: #e5e7eb;
-  --toast-fg-dim: #cbd5e1;
-  --toast-bg: rgba(17, 24, 39, 0.72);
-  --toast-border: rgba(148, 163, 184, 0.25);
-  --accent-violet: #7c3aed;
-  --accent-cyan: #06b6d4;
   --success: #22c55e;
   --info: #38bdf8;
   --warning: #f59e0b;
-  --error: #ef4444;
 
   --gradient-for-home-page: radial-gradient(
       1200px 600px at 10% -10%,

@@ -1,4 +1,8 @@
 <script setup lang="js">
+import { createNewUser } from '@/middleware/userService';
+import { getUserByMail } from '@/middleware/userService';
+import { compareUserPasswordByID } from '@/middleware/userService';
+
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
@@ -41,18 +45,6 @@ const registerForm = ref({
     acceptTerms: true
 });
 
-const profileForm = ref({
-    firstName: '',
-    lastName: '',
-    email: '',
-    currentPassword: '',
-    newPassword: '',
-    confirmNewPassword: ''
-});
-
-
-const isAuthenticated = computed(() => !!user.value);
-
 const canLogin = computed(() => {
     return loginForm.value.email && loginForm.value.password;
 });
@@ -79,168 +71,52 @@ const clearForms = () => {
     };
 };
 
-// Authentication methods (ready for the back-end)
-const login = async () => {
-    if (!canLogin.value) return;
-
-    isLoading.value = true;
-    try {
-        // For the back-end: Replace with actual API call
-        await mockApiCall();
-
-        // Mock successful login
-        user.value = {
-            id: 1,
-            firstName: 'John',
-            lastName: 'Doe',
-            email: loginForm.value.email,
-            avatar: null,
-            createdAt: new Date().toISOString()
-        };
-
-        // Store in localStorage
-        localStorage.setItem('user', JSON.stringify(user.value));
-        localStorage.setItem('isAuthenticated', 'true');
-
-        currentView.value = 'profile';
-        toast.success('Login successful! Welcome back!');
-
-    } catch (error) {
-        toast.error('Login failed. Please check your credentials.');
-        console.error('Login error:', error);
-    } finally {
-        isLoading.value = false;
-    }
-};
-
-const register = async () => {
-    if (!canRegister.value) return;
-
-    isLoading.value = true;
-    try {
-        // For the back-end: Replace with actual API call
-        await mockApiCall();
-
-        // Mock successful registration
-        user.value = {
-            id: Date.now(),
-            firstName: registerForm.value.firstName,
-            lastName: registerForm.value.lastName,
-            email: registerForm.value.email,
-            avatar: null,
-            createdAt: new Date().toISOString()
-        };
-
-        // Store in localStorage
-        localStorage.setItem('user', JSON.stringify(user.value));
-        localStorage.setItem('isAuthenticated', 'true');
-
-        currentView.value = 'profile';
-        toast.success('Registration successful! Welcome to TaskMaster!');
-
-    } catch (error) {
-        toast.error('Registration failed. Please try again.');
-        console.error('Registration error:', error);
-    } finally {
-        isLoading.value = false;
-    }
-};
-
-const logout = () => {
-    user.value = null;
-    localStorage.removeItem('user');
-    localStorage.removeItem('isAuthenticated');
-    currentView.value = 'login';
-    clearForms();
-    toast.info('You have been logged out.');
-};
-
-const updateProfile = async () => {
-    isLoading.value = true;
-    try {
-        // For the back-end: Replace with actual API call
-        await mockApiCall();
-
-        // Update user data
-        if (user.value) {
-            user.value.firstName = profileForm.value.firstName;
-            user.value.lastName = profileForm.value.lastName;
-            user.value.email = profileForm.value.email;
-            localStorage.setItem('user', JSON.stringify(user.value));
-        }
-
-        toast.success('Profile updated successfully!');
-
-    } catch (error) {
-        toast.error('Failed to update profile. Please try again.');
-        console.error('Profile update error:', error);
-    } finally {
-        isLoading.value = false;
-    }
-};
-
-// Mock API call (has to be replaced with the back-end)
-const mockApiCall = () => {
-    return new Promise((resolve, reject) => {
-        setTimeout(() => {
-            if (Math.random() > 0.1) {
-                resolve({ success: true });
-            } else {
-                reject(new Error('Network error'));
-            }
-        }, 1500);
-    });
-};
-
 // Initialize user from localStorage
 // Methods
 const handleLogin = async () => {
     if (!canLogin.value) return;
 
     try {
-        isLoading.value = true;
-        console.log('Account.vue: Calling AuthService.login...');
-
-        await AuthService.login({
-            email: loginForm.value.email,
-            password: loginForm.value.password
-        });
-
-        toast.success('Successfully signed in!');
-        router.push('/to-do-list');
-
-    } catch (error) {
-        console.error('Login error in Account.vue:', error);
-        toast.error(error.message || 'Login failed');
+      isLoading.value = true;
+      await getUserByMail(loginForm.value.email).then(async (resp) => {
+        console.log(resp)
+          if (resp != null) {
+            console.log(resp.passwordUser)
+            await compareUserPasswordByID(loginForm.value.password, resp.idUser).then(async (respCompare) => {
+              const response = respCompare
+              if (response.same) {
+                await AuthService.login({
+                  idUser: response.idUser
+                });
+                router.push('/to-do-list');
+              }
+            })
+          }
+        })
     } finally {
-        isLoading.value = false;
+      isLoading.value = false;
     }
+
 };
 
 const handleRegister = async () => {
-  console.log(!canRegister.value)
     if (canRegister.value) return;
 
-    try {
         isLoading.value = true;
-        console.log('Account.vue: Calling AuthService.register...');
+        await createNewUser({
+          nameUser: registerForm.value.firstName + " " + registerForm.value.lastName,
+          emailUser: registerForm.value.email,
+          passwordUser: registerForm.value.password,
+          nicknameUser: registerForm.value.firstName.slice(0, 2) + "." + registerForm.value.lastName.slice(0, 2),
+          dateJoinUser: Date.now()
+        }).then(async (resp) => {
+          if (resp.idUser) {
+            await AuthService.register({
+              idUser: resp.idUser
+            }).then(router.push('/to-do-list'));
+          }
+        }).catch((err) => console.log(err)).finally(() => {isLoading.value = false;})
 
-        await AuthService.register({
-            firstName: registerForm.value.firstName,
-            lastName: registerForm.value.lastName,
-            email: registerForm.value.email,
-            password: registerForm.value.password
-        });
-
-        toast.success('Account created successfully!');
-        router.push('/to-do-list');
-
-    } catch (error) {
-        console.error('Register error in Account.vue:', error);
-        toast.error(error.message || 'Registration failed');
-    } finally {
-        isLoading.value = false;
-    }
 };
 
 onMounted(() => {
@@ -261,6 +137,8 @@ onMounted(() => {
           @click="switchView('login')"
           :variant="currentView === 'login' ? 'secondary' : 'default'"
           :fill="false"
+          :basicpadd="true"
+          :paddx="true"
         >
           <template #body
             ><i class="fas fa-sign-in-alt !mr-2"></i> Sign In</template
@@ -270,6 +148,8 @@ onMounted(() => {
           @click="switchView('register')"
           :variant="currentView === 'register' ? 'secondary' : 'default'"
           :fill="false"
+          :basicpadd="true"
+          :paddx="true"
         >
           <template #body
             ><i class="fas fa-user-plus !mr-2"></i> Sign Up</template
@@ -307,13 +187,14 @@ onMounted(() => {
                 v-model="loginForm.rememberMe"
                 :disable-input="isLoading"
               />
-              <Link href="#" text="Forgot password?" />
             </div>
             <Button
               type="submit"
               :disabled="!canLogin || isLoading"
               :variant="currentView === 'login' ? 'secondary' : 'default'"
               :fill="currentView === 'login'"
+              :basicpadd="true"
+              :paddx="true"
             >
               <template #body
                 ><span
@@ -397,6 +278,8 @@ onMounted(() => {
               :disabled="!canRegister || isLoading"
               variant="secondary"
               fill="true"
+              :basicpadd="true"
+              :paddx="true"
             >
               <template #body
                 ><span

@@ -2,12 +2,9 @@
 // Import components
 import Navbar from "./components/Navbar/Navbar.vue";
 import Footer from "./components/Footer/Footer.vue";
-import ScrollBtn from "./components/ScrollBtn/ScrollBtn.vue";
+import ScrollBtn from "./components/ScrollBtn.vue";
 import { computed } from "vue";
 import { useRoute } from "vue-router";
-
-// Styles
-import "./components/Toast/Toast.css";
 
 // Get current route
 const route = useRoute();
