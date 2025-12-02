@@ -3,7 +3,7 @@ import { createApp } from "vue";
 import { createRouter, createWebHistory } from "vue-router";
 
 // Authentication middleware (for the front-end)
-import { requireAuth, requireGuest } from "./middleware/authGuard.js";
+import { isAuth, requireAuth, requireGuest } from "./middleware/authGuard.js";
 import { AuthService } from "./services/authService.js";
 
 // Styles
@@ -26,6 +26,7 @@ const router = createRouter({
       path: "/",
       name: "Home",
       component: Home,
+      beforeEnter: isAuth,
       meta: {
         title: "MyToDoList - Home",
         description:

@@ -10,12 +10,15 @@
       :type="typeinput"
       :disabled="disableinput"
       class="!py-3 !px-3 border-2 !rounded-lg border-(--border-strong) !bg-(--border-strong) text-(--fg) text-base disabled:!opacity-60 disabled:!cursor-not-allowed"
-      id="input"
+      :class="{ '!border-(--alert)': danger }"
+      :id="textlabel"
       :required="required || false"
       :placeholder="placeholder"
       :minlength="minlength"
       :value="modelValue"
       @input="$emit('update:modelValue', $event.target.value)"
+      @focus="focus"
+      @blur="blur"
     />
   </section>
 </template>
@@ -30,6 +33,9 @@ export default {
     "disableinput",
     "placeholder",
     "required",
+    "focus",
+    "blur",
+    "danger",
   ],
   emits: ["update:modelValue"],
 };

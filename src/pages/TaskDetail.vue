@@ -13,6 +13,9 @@ import Input from "@/components/Input.vue";
 
 import UnsplashImages from "../components/UnsplashImages/UnsplashImages.vue";
 import { useToast } from "vue-toastification";
+import AuthService from "@/services/authService";
+import { getUserByNickname } from "@/middleware/userService";
+import { createNewSharedLink } from "@/middleware/sharedService";
 
 export default {
   name: "TaskDetail",
@@ -46,6 +49,15 @@ export default {
         open: false,
         forItemId: null,
       },
+      sharedModal: {
+        open: false,
+        editingId: null,
+        form: {
+          nicknameOther: "",
+        },
+      },
+      didntFindUsername: false,
+      AuthService: AuthService,
     };
   },
   computed: {
@@ -162,6 +174,40 @@ export default {
       });
     },
 
+    openShareModal() {
+      this.sharedModal.open = true;
+      this.sharedModal.form = {
+        nicknameOther: "",
+      };
+      this.sharedModal.editingId = AuthService.user.value;
+    },
+
+    closeShareModal() {
+      this.sharedModal.open = false;
+      this.sharedModal.editingId = null;
+    },
+
+    async shareList() {
+      const form = this.sharedModal.form;
+      console.log(form.nicknameOther);
+      await getUserByNickname(form.nicknameOther).then(async (res) => {
+        const result = res;
+        if (result == null) {
+          this.didntFindUsername = true;
+        } else {
+          if (AuthService.user.value == result.idUser) {
+            console.log("Can't share to yourself");
+            return;
+          }
+          await createNewSharedLink({
+            idList: this.$route.params.id,
+            idOgUser: this.task.idUser,
+            idOtherUser: result.idUser,
+          }).then((res) => location.reload());
+        }
+      });
+    },
+
     openAddModal() {
       this.itemModal.mode = "create";
       this.itemModal.open = true;
@@ -186,7 +232,6 @@ export default {
     closeItemModal() {
       this.itemModal.open = false;
       this.itemModal.editingId = null;
-      location.reload();
     },
 
     async saveItem() {
@@ -214,6 +259,7 @@ export default {
           this.closeItemModal()
         );
       }
+      location.reload();
     },
 
     async deleteTask(task) {
@@ -263,6 +309,7 @@ export default {
           title="Change background"
           :basicpadd="true"
           :paddx="true"
+          v-if="this.task.idUser == AuthService.user"
         >
           <template #body
             ><svg viewBox="0 0 24 24" width="18" height="18">
@@ -301,25 +348,55 @@ export default {
     <main class="!py-10 !px-6 !max-w-6xl mx-auto">
       <header class="flex justify-between items-center !mb-6">
         <h2 class="!font-bold !text-(--fg) m-0">{{ task.descriptionList }}</h2>
-        <Button
-          variant="secondary"
-          @click="openAddModal"
-          :fill="true"
-          :basicpadd="true"
-          :paddx="true"
-        >
-          <template #body
-            ><svg viewBox="0 0 24 24" width="16" height="16">
-              <path
-                d="M12 5v14m-7-7h14"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-              />
-            </svg>
-            Add Item</template
+        <div class="flex gap-2">
+          <Button
+            variant="secondary"
+            @click="openShareModal"
+            :basicpadd="true"
+            :paddx="true"
+            v-if="this.task.idUser == AuthService.user"
           >
-        </Button>
+            <template #body
+              ><svg
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                viewBox="0 0 24 24"
+                class="!mr-2"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path d="M6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"></path>
+                <path d="M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"></path>
+                <path d="M18 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"></path>
+                <path d="m8.7 10.697 6.6-3.4"></path>
+                <path d="m8.7 13.297 6.6 3.4"></path>
+              </svg>
+              Share this list</template
+            >
+          </Button>
+          <Button
+            variant="secondary"
+            @click="openAddModal"
+            :fill="true"
+            :basicpadd="true"
+            :paddx="true"
+          >
+            <template #body
+              ><svg viewBox="0 0 24 24" width="16" height="16">
+                <path
+                  d="M12 5v14m-7-7h14"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
+              Add Item</template
+            >
+          </Button>
+        </div>
       </header>
 
       <!-- Todo Items -->
@@ -327,7 +404,7 @@ export default {
         <Card
           v-for="item in todoItems"
           :key="item"
-          custommainclass="!flex"
+          custommainclass="!flex !bg-(--surface-2)"
           class="group"
         >
           <template #main>
@@ -429,7 +506,7 @@ export default {
       </main>
 
       <!-- Progress Section -->
-      <Card v-if="todoItems.length !== 0">
+      <Card v-if="todoItems.length !== 0" custommainclass="!bg-(--surface-2)">
         <template #main
           ><h5>Progress</h5>
           <progress
@@ -491,7 +568,7 @@ export default {
               v-model="itemModal.form.tagsText"
             ></Input>
 
-            <div class="form-actions">
+            <div class="flex justify-end w-full gap-3">
               <Button
                 variant="alert"
                 text="Cancel"
@@ -503,6 +580,61 @@ export default {
                 variant="secondary"
                 :fill="true"
                 :text="itemModal.mode === 'create' ? 'Add Item' : 'Update Item'"
+                :basicpadd="true"
+                :paddx="true"
+              ></Button>
+            </div></form
+        ></template>
+      </Card>
+    </div>
+
+    <!-- Share Modal -->
+    <div
+      v-if="sharedModal.open"
+      class="fixed inset-0 bg-black/60 z-50 p-5 flex !items-center !justify-center"
+      @click.self="closeShareModal"
+    >
+      <Card :header="true" class="min-w-[500px]">
+        <template #header
+          ><h5 class="!mb-0">
+            {{ itemModal.mode === "create" ? "Add New Item" : "Edit Item" }}
+          </h5>
+          <button
+            class="bg-none border-none !text-xl cursor-pointer p-1"
+            @click="closeShareModal"
+          >
+            ✕
+          </button></template
+        >
+        <template #main
+          ><form @submit.prevent="shareList">
+            <Input
+              textlabel="Username"
+              class="mb-1"
+              :class="{ 'mb-4': !didntFindUsername }"
+              type="text"
+              placeholder="math.de, ja_oui"
+              required
+              v-model="sharedModal.form.nicknameOther"
+              :danger="didntFindUsername"
+              @click="didntFindUsername = false"
+            ></Input>
+            <p class="!text-(--alert) mb-4 text-sm" v-if="didntFindUsername">
+              No user found
+            </p>
+
+            <div class="flex justify-end w-full gap-3">
+              <Button
+                variant="alert"
+                text="Cancel"
+                @click="closeShareModal"
+                :basicpadd="true"
+                :paddx="true"
+              ></Button>
+              <Button
+                variant="secondary"
+                :fill="true"
+                text="Share"
                 :basicpadd="true"
                 :paddx="true"
               ></Button>

@@ -1,7 +1,7 @@
 <template>
   <div>
     <button
-      class="flex w-full items-center !py-1 !px-1 !rounded-lg !no-underline font-bold border !bg-(--alert)/10 !text-(--alert) !border-(--alert)/30 hover:!bg-(--alert)/25 hover:!text-(--fg) transition-all"
+      class="flex w-full items-center !py-1 !px-1 justify-center !rounded-lg !no-underline font-bold border !bg-(--alert)/10 !text-(--alert) !border-(--alert)/30 hover:!bg-(--alert)/25 hover:!text-(--fg) transition-all"
       :class="{
         '!bg-(--alert)/100 !text-(--fg)': fill,
         '!py-3 !px-3': basicpadd,
@@ -27,7 +27,7 @@
       <slot name="body"></slot>
     </button>
     <button
-      class="flex w-full items-center !py-1 !px-1 !rounded-lg !no-underline font-bold border !bg-(--default)/10 !text-(--default) !border-(--default)/30 hover:!bg-(--default)/25 hover:!text-(--fg) transition-all"
+      class="flex w-full items-center !py-1 !px-1 !rounded-lg justify-center !no-underline font-bold border !bg-(--default)/10 !text-(--default) !border-(--default)/30 hover:!bg-(--default)/25 hover:!text-(--fg) transition-all"
       :class="{
         '!bg-(--default)/100 !text-(--fg)': fill,
         '!py-3 !px-3': basicpadd,

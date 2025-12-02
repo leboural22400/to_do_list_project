@@ -137,10 +137,9 @@ async function handleSignOut() {
 <template>
   <!-- Open button for mobile navigation -->
   <button
-    id="openSidebarButton"
     ref="openBtnRef"
     @click="openSideBar"
-    style="background-color: transparent; border: none"
+    class="!bg-transparent !border-none py-3 px-4 !ml-auto cursor-pointer"
     aria-label="Open sidebar"
     aria-expanded="false"
     aria-controls="navbar"
@@ -167,15 +166,18 @@ async function handleSignOut() {
   <nav
     id="navbar"
     ref="navbarRef"
-    :class="{ show }"
+    class="top-0 z-50 bg-(--surface) max-md:fixed max-md:right-[-100%] max-md:h-[100vh] max-md:w-oty max-md:z-10 max-md:flex max-md:flex-col max-md:transition-transform"
+    :class="{ '!right-0': show }"
     role="navigation"
     aria-label="Main"
   >
-    <ul>
-      <li>
+    <ul
+      class="!flex !list-none !p-0 my-0 mx-auto !max-w-3xl max-md:flex-col max-md:!w-fit max-md:!m-2"
+    >
+      <li class="flex">
         <!-- Close button for mobile navigation -->
         <button
-          id="closeSidebarButton"
+          class="hidden !bg-transparent !border-none py-3 px-4 ml-auto cursor-pointer max-md:inline"
           @click="closeSideBar"
           aria-label="Close navigation"
         >
@@ -197,7 +199,9 @@ async function handleSignOut() {
         </button>
       </li>
     </ul>
-    <ul class="flex justify-between">
+    <ul
+      class="!flex !list-none justify-between !p-0 my-0 mx-auto !max-w-6xl max-md:!w-fit max-md:!flex-col max-md:!m-2"
+    >
       <!-- Authenticated User Links -->
       <template v-if="isAuthenticated">
         <li>
@@ -208,8 +212,8 @@ async function handleSignOut() {
           >
             <a
               :href="href"
-              class="navlink"
-              :class="{ 'current-link': isActive }"
+              class="flex !no-underline !text-xl !text-(--fg) text-center p-3 transition-colors hover:bg-[#333]"
+              :class="{ 'border-b-2 border-b-(--fg)': isActive }"
               @click.prevent="
                 navigate();
                 closeSideBar();
@@ -228,8 +232,8 @@ async function handleSignOut() {
           >
             <a
               :href="href"
-              class="navlink"
-              :class="{ 'current-link': isActive }"
+              class="flex !no-underline !text-xl !text-(--fg) text-center p-3 transition-colors hover:bg-[#333]"
+              :class="{ 'border-b-2 border-b-(--fg)': isActive }"
               @click.prevent="
                 navigate();
                 closeSideBar();
@@ -243,12 +247,12 @@ async function handleSignOut() {
 
       <!-- Guest User Links except  -->
       <template v-else>
-        <li class="home">
+        <li>
           <RouterLink to="/" custom v-slot="{ href, navigate, isActive }">
             <a
               :href="href"
-              class="navlink"
-              :class="{ 'current-link': isActive }"
+              class="flex !no-underline !text-xl !text-(--fg) text-center p-3 transition-colors hover:bg-[#333]"
+              :class="{ 'border-b-2 border-b-(--fg)': isActive }"
               @click.prevent="
                 navigate();
                 closeSideBar();
@@ -266,8 +270,8 @@ async function handleSignOut() {
           >
             <a
               :href="href"
-              class="navlink"
-              :class="{ 'current-link': isActive }"
+              class="flex !no-underline !text-xl !text-(--fg) text-center p-3 transition-colors hover:bg-[#333]"
+              :class="{ 'border-b-2 border-b-(--fg)': isActive }"
               @click.prevent="
                 navigate();
                 closeSideBar();
@@ -283,191 +287,9 @@ async function handleSignOut() {
 
   <!-- Overlay behind the sidebar when open (mobile) -->
   <div
-    id="overlay"
+    class="bg-black/50 fixed inset-0 z-[9] hidden"
     ref="overlayRef"
     @click="closeSideBar"
     aria-hidden="true"
   ></div>
 </template>
-
-<style scoped lang="scss">
-nav {
-  top: 0;
-  z-index: 10;
-  background-color: var(--surface);
-}
-
-nav ul {
-  display: flex;
-  list-style: none;
-  padding: 0;
-  margin: 0 auto;
-  max-width: 72rem;
-}
-
-// Pushes the "Home" link to the left in desktop mode for ergonomic reasons
-// Otherwise it doesn't look good
-nav .home {
-  margin-right: auto;
-}
-
-// I added this to fix a weird bug where the sidebar would be slightly off-screen
-// Using a flex often fix the alignment issues (no other particular reason)
-nav li {
-  display: flex;
-}
-
-.navlink {
-  display: flex;
-  text-decoration: none;
-  color: white;
-  font-size: 1.2rem;
-  padding: 1rem;
-  transition: background-color 0.3s ease;
-}
-
-.navlink:hover {
-  background-color: #333;
-}
-
-// Indicates the current active route in the navbar
-.current-link {
-  border-bottom: 2px solid white;
-}
-
-#openSidebarButton,
-#closeSidebarButton {
-  display: none;
-  background-color: transparent;
-  border: none;
-  padding: 10px 15px;
-  margin-left: auto;
-  color: white;
-  cursor: pointer;
-}
-
-$signout-bg: linear-gradient(135deg, #0ea5e9, #22d3ee);
-$signout-hover-bg: linear-gradient(135deg, #0284c7, #06b6d4);
-$signout-shadow: rgba(56, 189, 248, 0.4);
-$signout-hover-shadow: rgba(34, 211, 238, 0.6);
-
-.sign-out-btn {
-  background: $signout-bg;
-  border: none;
-  border-radius: 10px;
-  color: #fff;
-  font-family: inherit;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 0.8em 1.4em;
-  text-align: center;
-  margin: 0.4em 1em;
-  box-shadow: 0 0 10px $signout-shadow;
-  transition: all 0.25s ease;
-  position: relative;
-  overflow: hidden;
-
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.2),
-      transparent
-    );
-    transition: left 0.6s ease;
-  }
-
-  &:hover {
-    background: $signout-hover-bg;
-    box-shadow: 0 0 18px $signout-hover-shadow;
-    transform: translateY(-1px);
-
-    &::before {
-      left: 100%;
-    }
-  }
-
-  &:active {
-    transform: translateY(0);
-    box-shadow: 0 0 8px $signout-shadow;
-  }
-
-  &:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.4), 0 0 16px $signout-hover-shadow;
-  }
-
-  &::after {
-    content: "⇢";
-    margin-left: 0.6em;
-    font-size: 0.9em;
-    opacity: 0.8;
-  }
-
-  @media (max-width: 768px) {
-    width: calc(100% - 2em);
-    margin: 0.6em 1em;
-    font-size: 1.1rem;
-    padding: 0.9em;
-    border-radius: 12px;
-  }
-}
-
-// Position fixed and inset 0 to cover the entire screen
-// z-index 9 to be behind the navbar (z-index 10)
-#overlay {
-  background: rgba(0, 0, 0, 0.5);
-  position: fixed;
-  inset: 0;
-  z-index: 9;
-  display: none;
-}
-
-@media screen and (max-width: 925px) {
-  nav {
-    position: fixed;
-    top: 0;
-    right: -100%;
-    height: 100vh;
-    width: min(15em, 100%);
-    z-index: 10;
-    display: flex;
-    flex-direction: column;
-    transition: right 0.3s ease;
-  }
-
-  nav.show {
-    right: 0;
-  }
-
-  nav ul {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .navlink {
-    width: 100%;
-    padding-left: 2em;
-  }
-
-  nav .home {
-    margin-right: unset;
-  }
-
-  #openSidebarButton,
-  #closeSidebarButton {
-    display: block;
-  }
-
-  nav.show ~ #overlay {
-    display: block;
-  }
-}
-</style>

@@ -357,21 +357,6 @@ const imageCategories = [
         <div class="toolbar-row">
           <input
             type="text"
-            v-model.trim="gallery.query"
-            placeholder="Search (e.g.: city, cats, neon)"
-            @keyup.enter="searchUnsplash"
-          />
-          <button @click="searchUnsplash" :disabled="loading || !canSpend()">
-            Search
-          </button>
-          <button @click="randomUnsplash" :disabled="loading || !canSpend()">
-            Random
-          </button>
-        </div>
-
-        <div class="toolbar-row">
-          <input
-            type="text"
             v-model.trim="gallery.imageLink"
             placeholder="Paste image URL"
             @keyup.enter="copyLink"
@@ -382,22 +367,6 @@ const imageCategories = [
           <button @click="uploadImage" :disabled="loading || !canSpend()">
             Upload
           </button>
-        </div>
-
-        <div class="toolbar-row">
-          <label class="opt">
-            <span>Orientation</span>
-            <select v-model="gallery.orientation">
-              <option value="">Any</option>
-              <option value="landscape">Landscape</option>
-              <option value="portrait">Portrait</option>
-              <option value="squarish">Squarish</option>
-            </select>
-          </label>
-
-          <small class="quota-info">
-            Quota: {{ quota.remaining }}/{{ quota.limit }} / h
-          </small>
         </div>
       </div>
 
@@ -469,6 +438,7 @@ const imageCategories = [
 }
 
 .modal {
+  position: relative;
   width: min(960px, 95vw);
   max-height: 90vh;
   background: #14192b;

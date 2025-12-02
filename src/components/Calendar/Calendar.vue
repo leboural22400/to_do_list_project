@@ -1,9 +1,13 @@
 <script>
-import { getAllListByUserID } from "@/middleware/listService.js";
-import { getAllTaskByListID } from "@/middleware/taskService.js";
-
+import {
+  updateList,
+  destroyList,
+  createNewList,
+} from "@/middleware/listService.js";
 import { TaskDataService } from "../../services/taskDataService.js";
 import { useToast } from "vue-toastification";
+import AuthService from "@/services/authService.js";
+import { dateToISOString, parseAndValidateDate } from "@/utils/dateUtils.js";
 
 export default {
   name: "Calendar",
@@ -62,6 +66,7 @@ export default {
         open: false,
         taskToDelete: null,
       },
+      AuthService: AuthService,
     };
   },
   computed: {
@@ -260,18 +265,20 @@ export default {
         title: "",
         tag: "",
         priority: "medium",
+        date: date.toISOString().slice(0, 10),
       };
       this.addTaskModal.open = true;
     },
 
     updateTask(task) {
       this.addTaskModal.mode = "update";
-      this.addTaskModal.date = new Date(task.due + "T00:00:00");
+      this.addTaskModal.date = new Date(task.dueDateList);
       this.addTaskModal.editingTask = task;
       this.addTaskModal.form = {
-        title: task.title,
-        tag: task.tag,
-        priority: task.priority,
+        title: task.titleList,
+        tag: task.descriptionList,
+        date: task.dueDateList,
+        priority: task.priorityList,
       };
       this.addTaskModal.open = true;
     },
@@ -294,43 +301,52 @@ export default {
         return;
       }
 
+      if (this.addTaskModal.form.date.trim()) {
+        console.log("🔍 Validating date input:", this.addTaskModal.form.date);
+        const dateValidation = parseAndValidateDate(
+          this.addTaskModal.form.date
+        );
+        console.log("🔍 Validation result:", dateValidation);
+
+        if (!dateValidation.isValid) {
+          console.error("❌ Date validation failed:", dateValidation.error);
+          return;
+        }
+
+        // Convert to ISO format for storage
+        const originalDue = this.addTaskModal.form.date;
+        this.addTaskModal.form.date = dateToISOString(dateValidation.date);
+        console.log(
+          "✅ Date converted from",
+          originalDue,
+          "to",
+          this.addTaskModal.form.date
+        );
+      }
+
       if (this.addTaskModal.mode === "update") {
         // Update existing task
         const updates = {
-          title: this.addTaskModal.form.title.trim(),
-          tag: this.addTaskModal.form.tag.trim() || "General",
-          priority: this.addTaskModal.form.priority,
-          due: this.addTaskModal.date.toISOString().split("T")[0],
+          titleList: this.addTaskModal.form.title.trim(),
+          descriptionList: this.addTaskModal.form.tag.trim() || "General",
+          priorityList: this.addTaskModal.form.priority,
+          dueDateList: this.addTaskModal.form.date,
         };
-
-        TaskDataService.updateTask(this.addTaskModal.editingTask.id, updates);
-        this.toast.success(`Task "${updates.title}" updated successfully!`);
+        updateList(updates, this.addTaskModal.editingTask.idList);
       } else {
         // Create new task
-        const newTask = {
-          title: this.addTaskModal.form.title.trim(),
-          tag: this.addTaskModal.form.tag.trim() || "General",
-          priority: this.addTaskModal.form.priority,
-          due: this.addTaskModal.date.toISOString().split("T")[0],
-          done: false,
-          imageUrl: "",
-          imagePosition: { x: 50, y: 50 },
+        const newList = {
+          titleList: this.addTaskModal.form.title.trim(),
+          descriptionList: this.addTaskModal.form.tag.trim() || "General",
+          priorityList: this.addTaskModal.form.priority,
+          dueDateList: this.addTaskModal.form.date,
+          stateList: false,
+          idUser: AuthService.user.value,
         };
-
-        TaskDataService.addTask(newTask);
-        this.toast.success(`Task "${newTask.title}" created successfully!`);
+        createNewList(newList);
       }
-
-      // Reload tasks to update the calendar
-      this.loadTasks();
-
-      // Update the modal tasks if it's open
-      if (this.taskModal.open) {
-        this.taskModal.tasks = this.getTasksForDate(this.taskModal.date);
-      }
-
-      // Close modal
       this.closeAddTaskModal();
+      location.reload();
     },
 
     toggleTaskStatus(task) {
@@ -356,23 +372,10 @@ export default {
     confirmDelete() {
       const task = this.deleteModal.taskToDelete;
       if (!task) return;
-
-      TaskDataService.deleteTask(task.id);
-      // Reload tasks to update the calendar
-      this.loadTasks();
-
-      // Show success message
-      this.toast.success(`Task "${task.title}" deleted successfully!`);
-
-      // If this was the last task in the modal, close it
-      if (this.taskModal.tasks.length <= 1) {
-        this.closeTaskModal();
-      } else {
-        // Update the modal tasks
-        this.taskModal.tasks = this.getTasksForDate(this.taskModal.date);
-      }
-
-      this.closeDeleteModal();
+      destroyList(task.idList).then(() => {
+        this.closeDeleteModal();
+        location.reload();
+      });
     },
 
     closeDeleteModal() {
@@ -553,43 +556,6 @@ export default {
               +{{ dayData.lists.length - 3 }}
             </div>
           </div>
-
-          <!-- Hover preview -->
-          <div
-            v-if="
-              hoveredDate &&
-              dayData.date.toDateString() === hoveredDate.toDateString() &&
-              dayData.lists.length > 0
-            "
-            class="hover-preview"
-            :class="getPreviewPosition(index)"
-          >
-            <div class="preview-header">
-              {{ dayData.lists.length }} task{{
-                dayData.lists.length !== 1 ? "s" : ""
-              }}
-            </div>
-            <div class="preview-tasks">
-              <div
-                v-for="list in dayData.lists.slice(0, 2)"
-                :key="list.idList"
-                class="preview-task"
-                :class="{ done: list.stateList }"
-                @click.stop="openTaskDetail(list)"
-              >
-                <div
-                  class="priority-dot"
-                  :style="{
-                    backgroundColor: getPriorityColor(list.priorityList),
-                  }"
-                ></div>
-                <span class="task-title">{{ list.titleList }}</span>
-              </div>
-              <div v-if="dayData.lists.length > 2" class="preview-more">
-                and {{ dayData.lists.length - 2 }} more...
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -644,7 +610,7 @@ export default {
                   >
                 </div>
               </div>
-              <div class="task-actions">
+              <div class="task-actions" v-if="list.idUser == AuthService.user">
                 <button
                   class="task-action-btn update-btn"
                   @click="updateTask(list)"
@@ -741,7 +707,7 @@ export default {
                 id="taskDue"
                 type="text"
                 value="Selected date"
-                readonly
+                v-model="addTaskModal.form.date"
                 :placeholder="formatDate(addTaskModal.date)"
               />
             </div>
@@ -1040,16 +1006,19 @@ export default {
 }
 
 .day-header {
+  position: relative;
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
+  z-index: 1;
 }
 
 .day-number {
   font-size: 16px;
   font-weight: 600;
   color: #e9edf8;
+  z-index: -10;
 }
 
 .add-task-btn {
@@ -1109,15 +1078,15 @@ export default {
 
 .hover-preview {
   position: absolute;
+  opacity: 1;
   left: 0;
   right: 0;
   background: #1a2035;
   border: 1px solid rgba(0, 180, 255, 0.3);
   border-radius: 8px;
   padding: 12px;
-  z-index: 10;
+  z-index: 1000;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  animation: slideDown 0.2s ease;
 
   &.show-above {
     bottom: 100%;

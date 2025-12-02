@@ -217,6 +217,9 @@ export default {
           <p class="!text-base text-(--muted) mb-2">
             {{ user == null ? "" : user.emailUser }}
           </p>
+          <p class="!text-base text-(--muted) mb-2">
+            Username : {{ user == null ? "" : user.nicknameUser }}
+          </p>
           <span class="text-base text-(--ghost)"
             >Member since
             {{ formatDate(user == null ? "" : user.dateJoinUser) }}</span

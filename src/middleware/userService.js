@@ -31,6 +31,24 @@ export async function getUserByMail(emailUser) {
   }
 }
 
+export async function getUserByNickname(nicknameUser) {
+  try {
+    const resp = await fetch(
+      "http://localhost:8080/api/users/findByUsername/" + nicknameUser,
+      {
+        mode: "cors",
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    ).then((resp) => resp.json());
+    return resp;
+  } catch (err) {
+    return null;
+  }
+}
+
 export async function compareUserPasswordByID(password, userID) {
   try {
     const resp = await fetch(

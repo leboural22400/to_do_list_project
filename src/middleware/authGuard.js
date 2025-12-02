@@ -39,7 +39,26 @@ export const requireGuest = (to, from, next) => {
   }
 };
 
+export const isAuth = (to, from, next) => {
+  if (AuthService.isAuthenticated.value) {
+    if (AuthService.isTokenExpired.value) {
+      AuthService.refreshAuthToken()
+        .then(() => {
+          next();
+        })
+        .catch(() => {});
+    } else {
+      next({
+        name: "ToDoList",
+      });
+    }
+  } else {
+    next();
+  }
+};
+
 export default {
   requireAuth,
   requireGuest,
+  isAuth,
 };
