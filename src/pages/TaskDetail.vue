@@ -76,11 +76,20 @@ export default {
       };
     },
     completedCount() {
-      return this.todoItems.filter((item) => item.stateTask === 2).length;
+      return this.doneTask.length;
     },
     progressPercentage() {
       if (this.todoItems.length === 0) return 0;
       return Math.round((this.completedCount / this.todoItems.length) * 100);
+    },
+    todoTask() {
+      return this.todoItems.filter((item) => item.stateTask === 0);
+    },
+    doingTask() {
+      return this.todoItems.filter((item) => item.stateTask === 1);
+    },
+    doneTask() {
+      return this.todoItems.filter((item) => item.stateTask === 2);
     },
   },
   watch: {
@@ -400,110 +409,295 @@ export default {
       </header>
 
       <!-- Todo Items -->
-      <main class="flex flex-col !gap-4 !mb-8">
-        <Card
-          v-for="item in todoItems"
-          :key="item"
-          custommainclass="!flex !bg-(--surface-2)"
-          class="group"
-        >
-          <template #main>
-            <section class="flex !flex-1 gap-4">
-              <Checkbox
-                @click="toggleTask(item)"
-                class="!w-6 !h-6"
-                v-model="item.stateTask"
-                customclass="!w-6 !h-6 after:!w-2 after:!h-3 after:!left-[6px]"
-              ></Checkbox>
+      <details class="flex flex-col w-full" open>
+        <summary class="mb-3">To-Do</summary>
+        <main class="flex flex-col !gap-4">
+          <Card
+            v-for="item in todoTask"
+            :key="item"
+            custommainclass="!flex !bg-(--surface-2) "
+            class="group last:!mb-6"
+          >
+            <template #main>
+              <section class="flex !flex-1 gap-4">
+                <Checkbox
+                  @click="toggleTask(item)"
+                  class="!w-6 !h-6"
+                  v-model="item.stateTask"
+                  customclass="!w-6 !h-6 after:!w-2 after:!h-3 after:!left-[6px]"
+                ></Checkbox>
 
-              <main class="">
-                <h5 class="!font-semibold !text-(--fg)">
-                  {{ item.titleTask }}
-                </h5>
-                <p class="text-sm text-(--muted)" v-if="item.descriptionTask">
-                  {{ item.descriptionTask }}
-                </p>
-                <div
-                  class="flex gap-2 flex-wrap"
-                  v-if="JSON.parse(item.tagsTask).length"
+                <main class="">
+                  <h5 class="!font-semibold !text-(--fg)">
+                    {{ item.titleTask }}
+                  </h5>
+                  <p class="text-sm text-(--muted)" v-if="item.descriptionTask">
+                    {{ item.descriptionTask }}
+                  </p>
+                  <div
+                    class="flex gap-2 flex-wrap"
+                    v-if="JSON.parse(item.tagsTask).length"
+                  >
+                    <Pill
+                      v-for="tag in JSON.parse(item.tagsTask)"
+                      :key="tag"
+                      :text="tag"
+                      color="secondary"
+                    ></Pill>
+                  </div>
+                </main>
+              </section>
+
+              <aside
+                class="flex gap-2 opacity-0 transition-opacity group-hover:!opacity-100"
+              >
+                <Button
+                  :nopadd="true"
+                  variant="secondary"
+                  @click="editTask(item)"
+                  title="Edit"
+                  :basicpadd="true"
+                  :paddx="true"
                 >
-                  <Pill
-                    v-for="tag in JSON.parse(item.tagsTask)"
-                    :key="tag"
-                    :text="tag"
-                    color="secondary"
-                  ></Pill>
-                </div>
-              </main>
-            </section>
+                  <template #body
+                    ><svg viewBox="0 0 24 24" width="14" height="14">
+                      <path
+                        d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        fill="none"
+                      />
+                      <path
+                        d="m18.5 2.5-8 8v4h4l8-8a2 2 0 0 0 0-3z"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        fill="none"
+                      />
+                    </svg>
+                  </template>
+                </Button>
+                <Button
+                  :nopadd="true"
+                  variant="alert"
+                  @click="deleteTask(item)"
+                  title="Delete"
+                  :basicpadd="true"
+                  :paddx="true"
+                >
+                  <template #body
+                    ><svg viewBox="0 0 24 24" width="14" height="14">
+                      <path
+                        d="M3 6h18m-2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        fill="none"
+                      />
+                    </svg>
+                  </template>
+                </Button>
+              </aside>
+            </template>
+          </Card>
+        </main>
+      </details>
+      <details class="flex flex-col w-full" open>
+        <summary class="mb-3">Doing</summary>
+        <main class="flex flex-col !gap-4">
+          <Card
+            v-for="item in doingTask"
+            :key="item"
+            custommainclass="!flex !bg-(--surface-2)"
+            class="group last:!mb-6"
+          >
+            <template #main>
+              <section class="flex !flex-1 gap-4">
+                <Checkbox
+                  @click="toggleTask(item)"
+                  class="!w-6 !h-6"
+                  v-model="item.stateTask"
+                  customclass="!w-6 !h-6 after:!w-2 after:!h-3 after:!left-[6px]"
+                ></Checkbox>
 
-            <aside
-              class="flex gap-2 opacity-0 transition-opacity group-hover:!opacity-100"
-            >
-              <Button
-                :nopadd="true"
-                variant="secondary"
-                @click="editTask(item)"
-                title="Edit"
-                :basicpadd="true"
-                :paddx="true"
-              >
-                <template #body
-                  ><svg viewBox="0 0 24 24" width="14" height="14">
-                    <path
-                      d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      fill="none"
-                    />
-                    <path
-                      d="m18.5 2.5-8 8v4h4l8-8a2 2 0 0 0 0-3z"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      fill="none"
-                    />
-                  </svg>
-                </template>
-              </Button>
-              <Button
-                :nopadd="true"
-                variant="alert"
-                @click="deleteTask(item)"
-                title="Delete"
-                :basicpadd="true"
-                :paddx="true"
-              >
-                <template #body
-                  ><svg viewBox="0 0 24 24" width="14" height="14">
-                    <path
-                      d="M3 6h18m-2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      fill="none"
-                    />
-                  </svg>
-                </template>
-              </Button>
-            </aside>
-          </template>
-        </Card>
+                <main class="">
+                  <h5 class="!font-semibold !text-(--fg)">
+                    {{ item.titleTask }}
+                  </h5>
+                  <p class="text-sm text-(--muted)" v-if="item.descriptionTask">
+                    {{ item.descriptionTask }}
+                  </p>
+                  <div
+                    class="flex gap-2 flex-wrap"
+                    v-if="JSON.parse(item.tagsTask).length"
+                  >
+                    <Pill
+                      v-for="tag in JSON.parse(item.tagsTask)"
+                      :key="tag"
+                      :text="tag"
+                      color="secondary"
+                    ></Pill>
+                  </div>
+                </main>
+              </section>
 
-        <!-- Empty State -->
-        <div v-if="todoItems.length === 0" class="text-center !py-16 !px-5">
-          <h1>📝</h1>
-          <h4>No items yet</h4>
-          <p>Start by adding your first study item!</p>
-          <Button
-            class="max-w-55 mx-auto"
-            variant="secondary"
-            :fill="true"
-            text="Add Your First Item"
-            @click="openAddModal"
-            :basicpadd="true"
-            :paddx="true"
-          ></Button>
-        </div>
-      </main>
+              <aside
+                class="flex gap-2 opacity-0 transition-opacity group-hover:!opacity-100"
+              >
+                <Button
+                  :nopadd="true"
+                  variant="secondary"
+                  @click="editTask(item)"
+                  title="Edit"
+                  :basicpadd="true"
+                  :paddx="true"
+                >
+                  <template #body
+                    ><svg viewBox="0 0 24 24" width="14" height="14">
+                      <path
+                        d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        fill="none"
+                      />
+                      <path
+                        d="m18.5 2.5-8 8v4h4l8-8a2 2 0 0 0 0-3z"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        fill="none"
+                      />
+                    </svg>
+                  </template>
+                </Button>
+                <Button
+                  :nopadd="true"
+                  variant="alert"
+                  @click="deleteTask(item)"
+                  title="Delete"
+                  :basicpadd="true"
+                  :paddx="true"
+                >
+                  <template #body
+                    ><svg viewBox="0 0 24 24" width="14" height="14">
+                      <path
+                        d="M3 6h18m-2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        fill="none"
+                      />
+                    </svg>
+                  </template>
+                </Button>
+              </aside>
+            </template>
+          </Card>
+        </main>
+      </details>
+      <details class="flex flex-col w-full !mb-2">
+        <summary class="mb-3">Done</summary>
+        <main class="flex flex-col !gap-4">
+          <Card
+            v-for="item in doneTask"
+            :key="item"
+            custommainclass="!flex !bg-(--surface-2)"
+            class="group last:!mb-6"
+          >
+            <template #main>
+              <section class="flex !flex-1 gap-4">
+                <Checkbox
+                  @click="toggleTask(item)"
+                  class="!w-6 !h-6"
+                  v-model="item.stateTask"
+                  customclass="!w-6 !h-6 after:!w-2 after:!h-3 after:!left-[6px]"
+                ></Checkbox>
+
+                <main class="">
+                  <h5 class="!font-semibold !text-(--fg)">
+                    {{ item.titleTask }}
+                  </h5>
+                  <p class="text-sm text-(--muted)" v-if="item.descriptionTask">
+                    {{ item.descriptionTask }}
+                  </p>
+                  <div
+                    class="flex gap-2 flex-wrap"
+                    v-if="JSON.parse(item.tagsTask).length"
+                  >
+                    <Pill
+                      v-for="tag in JSON.parse(item.tagsTask)"
+                      :key="tag"
+                      :text="tag"
+                      color="secondary"
+                    ></Pill>
+                  </div>
+                </main>
+              </section>
+
+              <aside
+                class="flex gap-2 opacity-0 transition-opacity group-hover:!opacity-100"
+              >
+                <Button
+                  :nopadd="true"
+                  variant="secondary"
+                  @click="editTask(item)"
+                  title="Edit"
+                  :basicpadd="true"
+                  :paddx="true"
+                >
+                  <template #body
+                    ><svg viewBox="0 0 24 24" width="14" height="14">
+                      <path
+                        d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        fill="none"
+                      />
+                      <path
+                        d="m18.5 2.5-8 8v4h4l8-8a2 2 0 0 0 0-3z"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        fill="none"
+                      />
+                    </svg>
+                  </template>
+                </Button>
+                <Button
+                  :nopadd="true"
+                  variant="alert"
+                  @click="deleteTask(item)"
+                  title="Delete"
+                  :basicpadd="true"
+                  :paddx="true"
+                >
+                  <template #body
+                    ><svg viewBox="0 0 24 24" width="14" height="14">
+                      <path
+                        d="M3 6h18m-2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        fill="none"
+                      />
+                    </svg>
+                  </template>
+                </Button>
+              </aside>
+            </template>
+          </Card>
+        </main>
+      </details>
+
+      <!-- Empty State -->
+      <div v-if="todoItems.length === 0" class="text-center !py-16 !px-5">
+        <h1>📝</h1>
+        <h4>No items yet</h4>
+        <p>Start by adding your first study item!</p>
+        <Button
+          class="max-w-55 mx-auto"
+          variant="secondary"
+          :fill="true"
+          text="Add Your First Item"
+          @click="openAddModal"
+          :basicpadd="true"
+          :paddx="true"
+        ></Button>
+      </div>
 
       <!-- Progress Section -->
       <Card v-if="todoItems.length !== 0" custommainclass="!bg-(--surface-2)">
