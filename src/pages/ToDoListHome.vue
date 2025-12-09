@@ -1107,40 +1107,6 @@ export default {
                   :focus="() => (showDateHelp = true)"
                   :blur="() => (showDateHelp = false)"
                 ></Input>
-                <div v-if="showDateHelp" class="date-help">
-                  <div class="format-section">
-                    <strong>Quick Options:</strong>
-                    <ul>
-                      <li><code>Today</code> - {{ formatExample("today") }}</li>
-                      <li>
-                        <code>Tomorrow</code> - {{ formatExample("tomorrow") }}
-                      </li>
-                    </ul>
-                  </div>
-                  <div class="format-section">
-                    <strong>Weekdays:</strong>
-                    <ul>
-                      <li>
-                        <code>Monday</code>, <code>Mon</code> - Next Monday
-                      </li>
-                      <li>
-                        <code>Friday</code>, <code>Fri</code> - Next Friday
-                      </li>
-                      <li>Any weekday name works!</li>
-                    </ul>
-                  </div>
-                  <div class="format-section">
-                    <strong>Specific Dates:</strong>
-                    <ul>
-                      <li>
-                        <code>YYYY-MM-DD</code> - e.g., <code>2024-12-25</code>
-                      </li>
-                      <li>
-                        <code>Next week</code> - {{ formatExample("nextweek") }}
-                      </li>
-                    </ul>
-                  </div>
-                </div>
               </div>
             </div>
             <Select
